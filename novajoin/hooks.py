@@ -146,7 +146,7 @@ class IPAAuth(requests.auth.AuthBase):
     def refresh_auth(self):
         flags = kerberos.GSS_C_MUTUAL_FLAG | kerberos.GSS_C_SEQUENCE_FLAG
         try:
-            (unused, vc) = kerberos.authGSSClientInit(self.service, flags)
+            (unused, vc) = kerberos.authGSSClientInit(self.service, gssflags=flags)
         except kerberos.GSSError as e:
             LOG.error(_LE("caught kerberos exception %r") % e)
             raise IPAAuthError(str(e))

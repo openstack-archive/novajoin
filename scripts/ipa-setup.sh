@@ -6,21 +6,22 @@ ipa permission-add 'modify host password' --permissions='write' --type='host' --
 ipa permission-add 'write host certificate' --permissions='write' --type='host' --attrs='usercertificate'
 ipa permission-add 'modify host userclass' --permissions='write' --type='host' --attrs='userclass'
 
-ipa privilege-add-permission 'Nova Host Management' --permissions='add hosts' \
- --permissions='remove hosts' \
+ipa privilege-add-permission 'Nova Host Management' \
+ --permissions='System: add hosts' \
+ --permissions='System: remove hosts' \
  --permissions='modify host password' \
  --permissions='modify host userclass' \
  --permissions='modify hosts' \
- --permissions='revoke certificate' \
- --permissions='manage host keytab' \
- --permissions='write host certificate' \
- --permissions='retrieve certificates from the ca' \
- --permissions='modify services' \
- --permissions='manage service keytab' \
- --permissions='read dns entries' \
- --permissions='remove dns entries' \
- --permissions='add dns entries' \
- --permissions='update dns entries' 
+ --permissions='System: revoke certificate' \
+ --permissions='System: manage host keytab' \
+ --permissions='System: write host certificate' \
+ --permissions='System: retrieve certificates from the ca' \
+ --permissions='System: modify services' \
+ --permissions='System: manage service keytab' \
+ --permissions='System: read dns entries' \
+ --permissions='System: remove dns entries' \
+ --permissions='System: add dns entries' \
+ --permissions='System: update dns entries' 
 
 ipa role-add 'Nova Host Manager' --desc='Nova host management'
 
