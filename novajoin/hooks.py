@@ -337,15 +337,6 @@ class IPABuildInstanceHook(IPANovaHookBase):
         ipareq['params'] = [params, hostargs]
         self._call_and_handle_error(ipareq)
 
-    def post(self, *args, **kwargs):
-        # in post, there is an additional args[0] not in pre which is the
-        # state of the instance - so shift everything else down one from pre
-        LOG.debug('In IPABuildInstanceHook.post: args [%s] kwargs [%s]',
-                  pprint.pformat(args), pprint.pformat(kwargs))
-        # inst = args[3]
-        # if 'ipaotp' in inst.metadata:
-        #     inst.delete_metadata_key('ipaotp')
-
 
 class IPADeleteInstanceHook(IPANovaHookBase):
 
@@ -363,16 +354,8 @@ class IPADeleteInstanceHook(IPANovaHookBase):
         ipareq['params'] = [params, args]
         self._call_and_handle_error(ipareq)
 
-    def post(self, *args, **kwargs):
-        LOG.debug('In IPADeleteInstanceHook.post: args [%s] kwargs [%s]',
-                  pprint.pformat(args), pprint.pformat(kwargs))
-
 
 class IPANetworkInfoHook(IPANovaHookBase):
-
-    def pre(self, *args, **kwargs):
-        LOG.debug('In IPANetworkInfoHook.pre: args [%s] kwargs [%s]',
-                  pprint.pformat(args), pprint.pformat(kwargs))
 
     def post(self, *args, **kwargs):
         LOG.debug('In IPANetworkInfoHook.post: args [%s] kwargs [%s]',
