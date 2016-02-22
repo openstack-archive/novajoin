@@ -36,11 +36,13 @@ CONF = cfg.ConfigOpts()
 
 CONF.register_opts([
     cfg.StrOpt('url', default=None,
-               help='IPA JSON RPC URL (e.g. https://ipa.host.domain/ipa/json)'),
+               help='IPA JSON RPC URL (e.g. '
+                    'https://ipa.host.domain/ipa/json)'),
     cfg.StrOpt('keytab', default='/etc/krb5.keytab',
                help='Kerberos client keytab file'),
     cfg.StrOpt('service_name', default=None,
-               help='HTTP IPA Kerberos service name (e.g. HTTP@ipa.host.domain)'),
+               help='HTTP IPA Kerberos service name '
+                    '(e.g. HTTP@ipa.host.domain)'),
     cfg.StrOpt('cacert', default='/etc/ipa/ca.crt',
                help='CA certificate for use with https to IPA'),
     cfg.StrOpt('domain', default='test',
@@ -49,12 +51,15 @@ CONF.register_opts([
                help='How many times to attempt to retry '
                'the connection to IPA before giving up'),
     cfg.MultiOpt('inject_files', item_type=types.String(), default=[],
-                 help='Files to inject into the new VM.  Specify as /path/to/file/on/host[ /path/to/file/in/vm/if/different]')
+                 help='Files to inject into the new VM. '
+                      'Specify as /path/to/file/on/host '
+                      '[/path/to/file/in/vm/if/different]')
 ])
 
 CONF(['--config-file', '/etc/nova/ipaclient.conf'])
 
 LOG = logging.getLogger(__name__)
+
 
 class IPABaseError(Exception):
     error_code = 500
@@ -89,16 +94,14 @@ class IPAUnknownError(IPABaseError):
 
 class IPACommunicationFailure(IPABaseError):
     error_type = 'communication_failure'
-    pass
 
 
 class IPAInvalidData(IPABaseError):
     error_type = 'invalid_data'
-    pass
+
 
 class IPADuplicateEntry(IPABaseError):
     error_type = 'duplicate_entry'
-    pass
 
 
 ipaerror2exception = {
@@ -111,13 +114,14 @@ ipaerror2exception = {
         'dnsrecord': None
     },
     IPA_NO_DNS_RECORD: {
-        'host': None, # ignore - means already added
+        'host': None,  # ignore - means already added
     },
     IPA_DUPLICATE: {
         'host': IPADuplicateEntry,
         'dnsrecord': IPADuplicateEntry
     }
 }
+
 
 def getvmdomainname():
     rv = NOVACONF.dhcp_domain or CONF.domain
@@ -146,7 +150,8 @@ class IPAAuth(requests.auth.AuthBase):
     def refresh_auth(self):
         flags = kerberos.GSS_C_MUTUAL_FLAG | kerberos.GSS_C_SEQUENCE_FLAG
         try:
-            (unused, vc) = kerberos.authGSSClientInit(self.service, gssflags=flags)
+            (unused, vc) = kerberos.authGSSClientInit(self.service,
+                                                      gssflags=flags)
         except kerberos.GSSError as e:
             LOG.error(_LE("caught kerberos exception %r") % e)
             raise IPAAuthError(str(e))
@@ -183,7 +188,8 @@ class IPANovaHookBase(object):
                 else:
                     vmfile = hostfile
                 with file(hostfile, 'r') as f:
-                    cls.inject_files.append([vmfile, base64.b64encode(f.read())])
+                    cls.inject_files.append([vmfile,
+                                             base64.b64encode(f.read())])
 
     def __init__(self):
         IPANovaHookBase.start()
@@ -225,7 +231,7 @@ class IPANovaHookBase(object):
                 if self.ntries == 0:
                     # persistent inability to auth
                     LOG.error(_LE("Error: could not authenticate to IPA - "
-                              "please check for correct keytab file"))
+                                  "please check for correct keytab file"))
                     # reset for next time
                     self.ntries = CONF.connect_retries
                     raise IPACommunicationFailure()
@@ -295,8 +301,7 @@ class IPABuildInstanceHook(IPANovaHookBase):
         """
         LOG.debug('In IPABuildInstanceHook.pre: args [%s] kwargs [%s]',
                   pprint.pformat(args), pprint.pformat(kwargs))
-        for i in xrange(8):
-            LOG.debug("IPABuildInstanceHook.pre %d: %s", i, args[i])
+
         # the injected_files parameter array values are:
         #   ('filename', 'base64 encoded contents')
         ipaotp = uuid.uuid4().hex
@@ -316,9 +321,9 @@ class IPABuildInstanceHook(IPANovaHookBase):
         platform = self._get_metadata(args[4], 'extra_specs', None)
         hostargs = {
             'description': 'IPA host for %s' % inst.display_description,
-            'l': 'Mountain View, CA',
             'userpassword': ipaotp,
-            'force': True # we don't have an ip addr yet - use force to add anyway
+            'force': True  # we don't have an ip addr ye so
+                           # use force to add anyway
         }
         if userclass:
             hostargs['userclass'] = userclass
@@ -329,10 +334,6 @@ class IPABuildInstanceHook(IPANovaHookBase):
             hostargs['nshostlocation'] = location
         if platform:
             hostargs['nshardwareplatform'] = platform
-        # # userpassword, random, usercertificate, macaddress
-        # # ipasshpubkey, userclass, ipakrbrequirespreauth,
-        # # ipakrbokasdelegate, force, no_reverse, ip_address
-        # # no_members
         ipareq['params'] = [params, hostargs]
         self._call_and_handle_error(ipareq)
 
@@ -344,6 +345,7 @@ class IPABuildInstanceHook(IPANovaHookBase):
         # inst = args[3]
         # if 'ipaotp' in inst.metadata:
         #     inst.delete_metadata_key('ipaotp')
+
 
 class IPADeleteInstanceHook(IPANovaHookBase):
 
@@ -364,6 +366,7 @@ class IPADeleteInstanceHook(IPANovaHookBase):
     def post(self, *args, **kwargs):
         LOG.debug('In IPADeleteInstanceHook.post: args [%s] kwargs [%s]',
                   pprint.pformat(args), pprint.pformat(kwargs))
+
 
 class IPANetworkInfoHook(IPANovaHookBase):
 
