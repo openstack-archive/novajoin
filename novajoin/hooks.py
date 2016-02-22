@@ -201,7 +201,6 @@ class IPANovaHookBase(object):
         exc = None
         if resp['error'] is None:
             return exc
-        # FIXME: tighten this code up
         errcode = resp['error']['code']
         method = ipareq['method']
         methtype = method.split('_')[0]
