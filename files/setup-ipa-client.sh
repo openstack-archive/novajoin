@@ -17,7 +17,18 @@ if [ -z "$otp" ] ; then
 fi
 
 # Get the instance hostname out of the metadata
-fqdn=`curl http://169.254.169.254/openstack/latest/meta_data.json 2>/dev/null| python -mjson.tool |grep '"hostname"' | awk '{ print $2 }' | sed 's/,//' | sed 's/"//g'`
+data=`curl http://169.254.169.254/openstack/latest/meta_data.json 2>/dev/null`
+if [[ $? != 0 ]] ; then
+    echo "Unable to retrieve metadata"
+    exit 1
+fi
+
+fqdn=`echo $data | python -m json.tool | grep '"hostname"' | awk '{ print $2 }' | sed 's/,//' | sed 's/"//g'`
+
+if [ -z "$fqdn" ]; then
+    echo "Unable to determine hostname"
+    exit 1
+fi
 
 rm -f /tmp/ipaotp
 # run ipa-client-install
