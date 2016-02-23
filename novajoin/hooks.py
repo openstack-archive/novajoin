@@ -20,6 +20,7 @@ import uuid
 import kerberos
 import base64
 import six
+import re
 
 from oslo_config import cfg
 from oslo_config import types
@@ -50,6 +51,12 @@ CONF.register_opts([
     cfg.IntOpt('connect_retries', default=1,
                help='How many times to attempt to retry '
                'the connection to IPA before giving up'),
+    cfg.BoolOpt('project_subdomain', default=False,
+                help='Treat the project as a DNS subdomain '
+                'so a hostname would take the form: '
+                'instance.project.domain'),
+    cfg.BoolOpt('normalize_project', default=True,
+                help='Normalize the project name to be a valid DNS label'),
     cfg.MultiOpt('inject_files', item_type=types.String(), default=[],
                  help='Files to inject into the new VM. '
                       'Specify as /path/to/file/on/host '
@@ -59,6 +66,8 @@ CONF.register_opts([
 CONF(['--config-file', '/etc/nova/ipaclient.conf'])
 
 LOG = logging.getLogger(__name__)
+
+dns_regex = re.compile('[^0-9a-zA-Z]+')
 
 
 class IPABaseError(Exception):
@@ -256,6 +265,14 @@ class IPANovaHookBase(object):
             raise exclass()
         return resp
 
+    def _ipa_client_configured(self):
+        """
+        Return boolean indicating whether this machine is enrolled
+        in IPA. This is a rather weak detection method but better
+        than nothing.
+        """
+        return os.path.exists('/etc/ipa/default.conf')
+
 
 class IPABuildInstanceHook(IPANovaHookBase):
 
@@ -301,6 +318,9 @@ class IPABuildInstanceHook(IPANovaHookBase):
         LOG.debug('In IPABuildInstanceHook.pre: args [%s] kwargs [%s]',
                   pprint.pformat(args), pprint.pformat(kwargs))
 
+        if not self._ipa_client_configured():
+            return
+
         # the injected_files parameter array values are:
         #   ('filename', 'base64 encoded contents')
         ipaotp = uuid.uuid4().hex
@@ -308,10 +328,22 @@ class IPABuildInstanceHook(IPANovaHookBase):
         args[7].extend(self.inject_files)
         args[7].append(ipainject)
 
-        # call ipa host add to add the new host
+        ctx = args[1]
+        project = ctx.project_name
+        if CONF.normalize_project:
+            project = dns_regex.sub('-', project)
+            while project.startswith('-'):
+                project = project[1:]
+            while project.endswith('-'):
+                project = project[:-1]
+
         inst = args[2]
         ipareq = {'method': 'host_add', 'id': 0}
-        hostname = '%s.%s' % (inst.hostname, getvmdomainname())
+        if CONF.project_subdomain:
+            hostname = '%s.%s.%s' % (inst.hostname, project, getvmdomainname())
+        else:
+            hostname = '%s.%s' % (inst.hostname, getvmdomainname())
+
         params = [hostname]
         userclass = self._get_metadata(args[4], 'ipa_userclass', '')
         location = self._get_metadata(args[4], 'ipa_host_location', '')
@@ -342,6 +374,10 @@ class IPADeleteInstanceHook(IPANovaHookBase):
     def pre(self, *args, **kwargs):
         LOG.debug('In IPADeleteInstanceHook.pre: args [%s] kwargs [%s]',
                   pprint.pformat(args), pprint.pformat(kwargs))
+
+        if not self._ipa_client_configured():
+            return
+
         inst = args[2]
         # call ipa host delete to remove the host
         ipareq = {'method': 'host_del', 'id': 0}
@@ -359,6 +395,10 @@ class IPANetworkInfoHook(IPANovaHookBase):
     def post(self, *args, **kwargs):
         LOG.debug('In IPANetworkInfoHook.post: args [%s] kwargs [%s]',
                   pprint.pformat(args), pprint.pformat(kwargs))
+
+        if not self._ipa_client_configured():
+            return
+
         if 'nw_info' not in kwargs:
             return
         inst = args[3]
