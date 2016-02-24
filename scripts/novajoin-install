@@ -178,14 +178,6 @@ def install(args):
     os.chown('/etc/nova/ipauser.keytab', user.pw_uid, user.pw_gid)
     os.chmod('/etc/nova/ipauser.keytab', 0o600)
 
-    # Fixup permissions so only the ipsilon user can read these files
-#    files.fix_user_dirs(instance_conf, opts['system_user'])
-#    files.fix_user_dirs(args['data_dir'], opts['system_user'])
-#    try:
-#        subprocess.call(['/usr/sbin/restorecon', '-R', args['data_dir']])
-#    except Exception:  # pylint: disable=broad-except
-#        pass
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Nova join Install Options')
