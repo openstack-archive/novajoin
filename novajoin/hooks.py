@@ -319,6 +319,12 @@ class IPABuildInstanceHook(IPANovaHookBase):
                   pprint.pformat(args), pprint.pformat(kwargs))
 
         if not self._ipa_client_configured():
+            LOG.debug('IPA is not configured')
+            return
+
+        enroll = self._get_metadata(args[4], 'ipa_enroll', '')
+        if enroll.lower() != 'true':
+            LOG.debug('IPA enrollment not requested')
             return
 
         # the injected_files parameter array values are:
@@ -345,7 +351,7 @@ class IPABuildInstanceHook(IPANovaHookBase):
             hostname = '%s.%s' % (inst.hostname, getvmdomainname())
 
         params = [hostname]
-        userclass = self._get_metadata(args[4], 'ipa_userclass', '')
+        hostclass = self._get_metadata(args[4], 'ipa_hostclass', '')
         location = self._get_metadata(args[4], 'ipa_host_location', '')
         osdistro = self._get_metadata(args[4], 'os_distro', '')
         osver = self._get_metadata(args[4], 'os_version', None)
@@ -356,8 +362,8 @@ class IPABuildInstanceHook(IPANovaHookBase):
             'force': True  # we don't have an ip addr ye so
                            # use force to add anyway
         }
-        if userclass:
-            hostargs['userclass'] = userclass
+        if hostclass:
+            hostargs['userclass'] = hostclass
         if osdistro or osver:
             hostargs['nsosversion'] = '%s %s' % (osdistro, osver)
             hostargs['nsosversion'] = hostargs['nsosversion'].strip()
@@ -376,6 +382,12 @@ class IPADeleteInstanceHook(IPANovaHookBase):
                   pprint.pformat(args), pprint.pformat(kwargs))
 
         if not self._ipa_client_configured():
+            LOG.debug('IPA is not configured')
+            return
+
+        enroll= args[2].metadata.get('ipa_enroll', '')
+        if enroll.lower() != 'true':
+            LOG.debug('IPA enrollment not requested')
             return
 
         inst = args[2]
@@ -397,7 +409,12 @@ class IPANetworkInfoHook(IPANovaHookBase):
                   pprint.pformat(args), pprint.pformat(kwargs))
 
         if not self._ipa_client_configured():
+            LOG.debug('IPA is not configured')
             return
+
+        enroll= args[3].metadata.get('ipa_enroll', '')
+        if enroll.lower() != 'true':
+            LOG.debug('IPA enrollment not requested')
 
         if 'nw_info' not in kwargs:
             return
