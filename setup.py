@@ -55,6 +55,7 @@ setup(
     data_files=[('/usr/share/novajoin', ['files/cloud-config.json',
                                          'files/ipaclient.conf.template',
                                          'files/setup-ipa-client.sh',
+                                         'files/freeipa.json',
                                          ],),
                 ('/usr/sbin', ['scripts/novajoin-install'],),
                 ],
