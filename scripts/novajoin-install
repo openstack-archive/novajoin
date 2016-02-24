@@ -178,12 +178,19 @@ def install(args):
     os.chown('/etc/nova/ipauser.keytab', user.pw_uid, user.pw_gid)
     os.chmod('/etc/nova/ipauser.keytab', 0o600)
 
+    logger.info('Importing IPA metadata')
     result = run(['glance',
-             'md-namespace-import',
-             '--file',
-             '/usr/share/freeipa.json'], raiseonerr=False)
+                  'md-namespace-import',
+                  '--file',
+                  '/usr/share/freeipa.json'], raiseonerr=False)
     if result.returncode != 0:
         logger.error('Adding IPA metadata failed')
+
+    logger.info('Creating IPA permissions')
+    result = run(['/usr/libexec/novajoin-ipa-setup.sh'],
+                 raiseonerr=False)
+    if result.returncode != 0:
+        logger.error('Creating IPA permissions failed')
 
 
 def parse_args():

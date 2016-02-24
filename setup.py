@@ -58,6 +58,7 @@ setup(
                                          'files/freeipa.json',
                                          ],),
                 ('/usr/sbin', ['scripts/novajoin-install'],),
+                ('/usr/libexec', ['scripts/novajoin-ipa-setup.sh'],),
                 ],
 
     zip_safe=False,
