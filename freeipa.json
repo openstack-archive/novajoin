@@ -1,0 +1,26 @@
+{
+    "namespace": "OS::Identity::IPA",
+    "display_name": "IPA",
+    "description": "IPA is a centralized identity management system that can manage POSIX users and groups as well as hosts. It can also manage policy such as host-based access control and SUDO",
+    "resource_type_associations": [
+        {
+            "name": "OS::Glance::Image"
+        },
+        {
+            "name": "OS::Nova::Instance"
+        },
+    ],
+    "objects": [
+        {
+            "name": "IPA automember host class",
+            "description": "IPA can automatically add hosts to hostgroups based on the automember class. This can be used to simplify access control.",
+            "properties": {
+                "ipa_userclass": {
+                    "title": "Class",
+                    "description": "The automember host class.",
+                    "type": "string"
+                },
+            }
+        }
+    ]
+}

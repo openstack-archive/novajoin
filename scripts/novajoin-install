@@ -262,4 +262,6 @@ if __name__ == '__main__':
             logger.info('Installation complete.')
             logger.info(
                 'Please restart nova-compute to enable the join service.')
+            logger.info(
+                'The freeipa.json metadata needs to be added using Horizon')
     sys.exit(out)
