@@ -186,8 +186,7 @@ class IPANovaHookBase(object):
             xtra_hdrs = {'Content-Type': 'application/json',
                          'Referer': CONF.url}
             cls.session.headers.update(xtra_hdrs)
-            # sigh. Fix me again. Do I need to call update-ca-certificates?
-            cls.session.verify = False
+            cls.session.verify = True
         if not cls.inject_files:
             for fn in CONF.inject_files:
                 hostvm = fn.split(' ')
