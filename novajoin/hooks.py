@@ -385,7 +385,9 @@ class IPADeleteInstanceHook(IPANovaHookBase):
             LOG.debug('IPA is not configured')
             return
 
-        enroll= args[2].metadata.get('ipa_enroll', '')
+        enroll = args[2].metadata.get('ipa_enroll', False)
+        if not enroll:
+            enroll = args[2].system_metadata.get('image_ipa_enroll', False)
         if enroll.lower() != 'true':
             LOG.debug('IPA enrollment not requested')
             return
@@ -412,7 +414,9 @@ class IPANetworkInfoHook(IPANovaHookBase):
             LOG.debug('IPA is not configured')
             return
 
-        enroll= args[3].metadata.get('ipa_enroll', '')
+        enroll = args[3].metadata.get('ipa_enroll', False)
+        if not enroll:
+            enroll = args[3].system_metadata.get('image_ipa_enroll', False)
         if enroll.lower() != 'true':
             LOG.debug('IPA enrollment not requested')
 
