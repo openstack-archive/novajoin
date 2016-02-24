@@ -178,6 +178,11 @@ def install(args):
     os.chown('/etc/nova/ipauser.keytab', user.pw_uid, user.pw_gid)
     os.chmod('/etc/nova/ipauser.keytab', 0o600)
 
+    run(['glance',
+         'md-namespace-import',
+         '--file',
+         '/usr/share/freeipa.json'])
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Nova join Install Options')
