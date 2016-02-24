@@ -212,7 +212,6 @@ def parse_args():
 
     args = vars(parser.parse_args())
 
-    print args
     if not args['principal']:
         args['principal'] = user_input("User authorized to manage hosts")
 
