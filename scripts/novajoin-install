@@ -30,7 +30,7 @@ from string import Template
 from six.moves import input
 from six.moves.configparser import ConfigParser
 from ipalib.config import Env
-from ipapython.ipautil import run, kinit_password
+from ipapython.ipautil import run, kinit_password, user_input
 
 
 DATADIR = '/usr/share/novajoin'
@@ -84,16 +84,6 @@ def write_from_template(destfile, template, opts):
         f.write(text)
     logger.debug(destfile)
     logger.debug(text)
-
-
-def user_input(prompt):
-    while True:
-        try:
-            ret = input("%s: " % prompt)
-            if ret.strip():
-                return ret.strip()
-        except EOFError:
-            raise ConfigurationError('Failed to get user input')
 
 
 def install(args):
@@ -179,16 +169,16 @@ def install(args):
     os.chmod('/etc/nova/ipauser.keytab', 0o600)
 
     logger.info('Importing IPA metadata')
-    (stdin, stdout, returncode) = run(
+    (stdout, stderr, returncode) = run(
         ['glance',
          'md-namespace-import',
          '--file',
          '/usr/share/freeipa.json'], raiseonerr=False)
     if returncode != 0:
-        logger.error('Adding IPA metadata failed')
+        logger.error('Adding IPA metadata failed: %s' % stderr)
 
     logger.info('Creating IPA permissions')
-    (stdin, stdout, returncode) = run(
+    (stdout, stderr, returncode) = run(
         ['/usr/libexec/novajoin-ipa-setup.sh'], raiseonerr=False)
     if returncode != 0:
         logger.error('Creating IPA permissions failed')
@@ -196,29 +186,36 @@ def install(args):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Nova join Install Options')
-    parser.add_argument('--version',
-                        action='version', version='%(prog)s 0.1')
     parser.add_argument('--hostname',
                         help='Machine\'s fully qualified host name')
     parser.add_argument('--user',
                         help='User that nova services run as',
                         default='nova')
-    parser.add_argument('--principal', dest='principal',
-                        help='principal to use to for IPA host management')
+    parser.add_argument('--principal', dest='principal', default='admin',
+                        help='principal to use to setup IPA integration')
     parser.add_argument('--password', dest='password',
                         help='password for the principal')
-    parser.add_argument('--prompt_password', dest='prompt_password',
-                        action='store_true', default=False,
-                        help='prompt for the principal password')
+    parser.add_argument('--password-file', dest='passwordfile',
+                        help='path to file containing password for '
+                             'the principal')
 
     args = vars(parser.parse_args())
 
     if not args['principal']:
-        args['principal'] = user_input("User authorized to manage hosts")
+        args['principal'] = user_input("IPA admin user", "admin",
+                                       allow_empty=False)
 
+    if args['passwordfile']:
+        try:
+            with open(args['passwordfile']) as f:
+                args['password'] = f.read()
+        except IOError as e:
+            raise ConfigurationError('Unable to read password file: %s'
+                                     % e)
     if not args['password']:
         try:
-            args['password'] = getpass.getpass("Password: ")
+            args['password'] = getpass.getpass("Password for %s: " % 
+                                                args['principal'])
         except EOFError:
             password = None
         if not args['password']:
@@ -268,6 +265,4 @@ if __name__ == '__main__':
             logger.info('Installation complete.')
             logger.info(
                 'Please restart nova-compute to enable the join service.')
-            logger.info(
-                'The freeipa.json metadata needs to be added using Horizon')
     sys.exit(out)

@@ -44,8 +44,6 @@ CONF.register_opts([
     cfg.StrOpt('service_name', default=None,
                help='HTTP IPA Kerberos service name '
                     '(e.g. HTTP@ipa.host.domain)'),
-    cfg.StrOpt('cacert', default='/etc/ipa/ca.crt',
-               help='CA certificate for use with https to IPA'),
     cfg.StrOpt('domain', default='test',
                help='Domain for new hosts'),
     cfg.IntOpt('connect_retries', default=1,
