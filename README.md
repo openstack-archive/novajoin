@@ -83,6 +83,14 @@ normalize_project: A project name can contain values not allowed as a
 inject_files: Files to inject into the VM.
 
 
+Origin
+======
+
+This builds on the work of Rich Megginson and Nathan Kinder. Rich
+did the initial implementation visible at
+https://github.com/richm/rdo-vm-factory/blob/master/rdo-ipa-nova
+
+
 Copyright and License
 =====================
 
