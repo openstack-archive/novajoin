@@ -1,0 +1,9 @@
+[DEFAULT]
+
+keytab = /etc/nova/ipauser.keytab
+service_name = HTTP@$MASTER
+url = https://$MASTER/ipa/json
+cacert = /etc/ipa/ca.crt
+connect_retries = 1
+inject_files = /etc/nova/setup-ipa-client.sh /tmp/setup-ipa-client.sh
+inject_files = /etc/ipa/ca.crt

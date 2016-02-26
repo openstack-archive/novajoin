@@ -1,0 +1,323 @@
+#!/usr/bin/python
+# Copyright 2016 Red Hat, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import argparse
+import logging
+import os
+import pwd
+import shutil
+import socket
+import subprocess
+import sys
+import time
+import copy
+from subprocess import CalledProcessError
+import getpass
+from string import Template
+from six.moves import input
+from six.moves.configparser import ConfigParser
+from ipalib.config import Env
+
+
+DATADIR = '/usr/share/novajoin'
+IPACONF = '/etc/ipa/default.conf'
+NOVADIR = '/etc/nova'
+IPACLIENT = 'ipaclient.conf'
+
+
+class ConfigurationError(StandardError):
+
+    def __init__(self, message):
+        StandardError.__init__(self, message)
+
+
+LOGFILE = '/var/log/novajoin-install.log'
+logger = logging.getLogger()
+
+
+def openlogs():
+    global logger  # pylint: disable=W0603
+    if os.path.isfile(LOGFILE):
+        try:
+            created = '%s' % time.strftime(
+                '%Y%m%d%H%M%SZ', time.gmtime(os.path.getctime(LOGFILE)))
+            shutil.move(LOGFILE, '%s.%s' % (LOGFILE, created))
+        except IOError:
+            pass
+    logger = logging.getLogger()
+    try:
+        lh = logging.FileHandler(LOGFILE)
+    except IOError as e:
+        print >> sys.stderr, 'Unable to open %s (%s)' % (LOGFILE, str(e))
+        lh = logging.StreamHandler(sys.stderr)
+    formatter = logging.Formatter('[%(asctime)s] %(message)s')
+    lh.setFormatter(formatter)
+    lh.setLevel(logging.DEBUG)
+    logger.addHandler(lh)
+    logger.propagate = False
+    ch = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('%(message)s')
+    ch.setFormatter(formatter)
+    ch.setLevel(logging.INFO)
+    logger.addHandler(ch)
+
+
+def write_from_template(destfile, template, opts):
+    with open(template) as f:
+        t = Template(f.read())
+    text = t.substitute(**opts)
+    with open(destfile, 'w+') as f:
+        f.write(text)
+    logger.debug(destfile)
+    logger.debug(text)
+
+
+def user_input(prompt):
+    while True:
+        try:
+            ret = input("%s: " % prompt)
+            if ret.strip():
+                return ret.strip()
+        except EOFError:
+            raise ConfigurationError('Failed to get user input')
+
+
+def shell_quote(string):
+    return "'" + string.replace("'", "'\\''") + "'"
+
+
+def run(args, stdin=None, raiseonerr=True, env=None,
+        capture_output=True, skip_output=False, cwd=None,
+        timeout=None):
+    """
+    Execute a command and return stdin, stdout and the process return code.
+
+    :param args: List of arguments for the command
+    :param stdin: Optional input to the command
+    :param raiseonerr: If True, raises an exception if the return code is
+        not zero
+    :param env: Dictionary of environment variables passed to the command.
+        When None, current environment is copied
+    :param capture_output: Capture stderr and stdout
+    :param skip_output: Redirect the output to /dev/null and do not capture it
+    :param cwd: Current working directory
+    :param timeout: Timeout if the command hasn't returned within the specified
+        number of seconds.
+    """
+    p_in = None
+    p_out = None
+    p_err = None
+
+    if env is None:
+        # copy default env
+        env = copy.deepcopy(os.environ)
+        env["PATH"] = "/bin:/sbin:/usr/bin:/usr/sbin"
+    if stdin:
+        p_in = subprocess.PIPE
+    if skip_output:
+        p_out = p_err = open('/dev/null', 'w')
+    elif capture_output:
+        p_out = subprocess.PIPE
+        p_err = subprocess.PIPE
+
+    if timeout:
+        # If a timeout was provided, use the timeout command
+        # to execute the requested command.
+        args[0:0] = ['/bin/timeout', str(timeout)]
+
+    arg_string = ' '.join(shell_quote(a) for a in args)
+    logger.debug('Starting external process')
+    logger.debug('args=%s' % arg_string)
+
+    try:
+        p = subprocess.Popen(args, stdin=p_in, stdout=p_out, stderr=p_err,
+                             close_fds=True, env=env, cwd=cwd)
+        stdout, stderr = p.communicate(stdin)
+        stdout, stderr = str(stdout), str(stderr)    # Make pylint happy
+    except KeyboardInterrupt:
+        logger.debug('Process interrupted')
+        p.wait()
+        raise
+    except:
+        logger.debug('Process execution failed')
+        raise
+    finally:
+        if skip_output:
+            p_out.close()   # pylint: disable=E1103
+
+    if timeout and p.returncode == 124:
+        logger.debug('Process did not complete before timeout')
+
+    logger.debug('Process finished, return code=%s', p.returncode)
+
+    # The command and its output may include passwords that we don't want
+    # to log. Replace those.
+    if not skip_output:
+        logger.debug('stdout=%s' % stdout)
+        logger.debug('stderr=%s' % stderr)
+
+    if p.returncode != 0 and raiseonerr:
+        raise CalledProcessError(p.returncode, arg_string, stdout)
+
+    return (stdout, stderr, p.returncode)
+
+
+def install(args):
+    logger.info('Installation initiated')
+
+    # TODO: verify that machine is IPA client already
+
+    logger.info('Installing default config files')
+
+    ipaenv = Env()
+    ipaenv._merge_from_file(IPACONF)
+
+    confopts = {'FQDN': args['hostname'],
+                'MASTER': ipaenv.server}  # pylint: disable=no-member
+
+    nova_ipa_conf = os.path.join(NOVADIR, IPACLIENT)
+
+    write_from_template(nova_ipa_conf,
+                        os.path.join(DATADIR, IPACLIENT + '.template'),
+                        confopts)
+
+    FILES = ['setup-ipa-client.sh', 'cloud-config.json']
+    for fn in FILES:
+        dst = os.path.join(NOVADIR, fn)
+        source = os.path.join(DATADIR, fn)
+        logger.info('Installing %s' % dst)
+        shutil.copyfile(source, dst)
+
+    config = ConfigParser()
+    config.read('/etc/nova/nova.conf')
+    config.set('DEFAULT',
+               'vendordata_jsonfile_path',
+               '/etc/nova/cloud-config.json')
+
+    # set the default domain to the IPA domain. This is added to the
+    # instance name to set the hostname.
+    config.set('DEFAULT',
+               'dhcp_domain',
+               ipaenv.domain)
+
+    with open('/etc/nova/nova.conf', 'w') as f:
+        config.write(f)
+
+    try:
+        if os.path.exists('/etc/nova/ipauser.keytab'):
+            os.unlink('/etc/nova/ipauser.keytab')
+    except OSError as e:
+        raise ConfigurationError(
+            'Could not remove /etc/nova/ipauser.keytab: %s' % e
+        )
+
+    # FIXME: get the keytab with credentials rather than hardcoding
+    run(['ipa-getkeytab', '-r', '-s', ipaenv.server,
+         '-D', 'cn=directory manager', '-w', 'password', '-p',
+         'admin@%s' % ipaenv.realm, '-k', '/etc/nova/ipauser.keytab'])
+
+    try:
+        user = pwd.getpwnam(args['user'])
+    except KeyError:
+        raise ConfigurationError('User: %s not found on the system' %
+                                 args['user'])
+
+    os.chown('/etc/nova/ipauser.keytab', user.pw_uid, user.pw_gid)
+    os.chmod('/etc/nova/ipauser.keytab', 0o600)
+
+    # Fixup permissions so only the ipsilon user can read these files
+#    files.fix_user_dirs(instance_conf, opts['system_user'])
+#    files.fix_user_dirs(args['data_dir'], opts['system_user'])
+#    try:
+#        subprocess.call(['/usr/sbin/restorecon', '-R', args['data_dir']])
+#    except Exception:  # pylint: disable=broad-except
+#        pass
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Nova join Install Options')
+    parser.add_argument('--version',
+                        action='version', version='%(prog)s 0.1')
+    parser.add_argument('--hostname',
+                        help='Machine\'s fully qualified host name')
+    parser.add_argument('--user',
+                        help='User that nova services run as',
+                        default='nova')
+    parser.add_argument('--principal', dest='principal',
+                        help='principal to use to for IPA host management')
+    parser.add_argument('--password', dest='password',
+                        help='password for the principal')
+    parser.add_argument('--prompt_password', dest='prompt_password',
+                        action='store_true', default=False,
+                        help='prompt for the principal password')
+
+    args = vars(parser.parse_args())
+
+    if not args['principal']:
+        principal = user_input("User authorized to manage hosts")
+
+    if not args['password']:
+        try:
+            password = getpass.getpass("Password: ")
+        except EOFError:
+            password = None
+        if not password:
+            raise ConfigurationError('Password must be provided.')
+
+    if not args['hostname']:
+        args['hostname'] = socket.getfqdn()
+
+    if len(args['hostname'].split('.')) < 2:
+        raise ConfigurationError('Hostname: %s is not a FQDN' %
+                                 args['hostname'])
+
+    try:
+        pwd.getpwnam(args['user'])
+    except KeyError:
+        raise ConfigurationError('User: %s not found on the system' %
+                                 args['user'])
+
+    return args
+
+if __name__ == '__main__':
+    opts = []
+    out = 0
+    openlogs()
+    logger.setLevel(logging.DEBUG)
+
+    try:
+        opts = parse_args()
+
+        logger.debug('Installation arguments:')
+        for k in sorted(opts.iterkeys()):
+            logger.debug('%s: %s', k, opts[k])
+
+        install(opts)
+    except Exception as e:  # pylint: disable=broad-except
+        logger.info(str(e))          # emit message to console
+        logger.debug(e, exc_info=1)  # add backtrace information to logfile
+
+        logger.info('Installation aborted.')
+        logger.info('See log file %s for details' % LOGFILE)
+        out = 1
+    except SystemExit:
+        out = 1
+        raise
+    finally:
+        if out == 0:
+            logger.info('Installation complete.')
+            logger.info(
+                'Please restart nova-compute to enable the join service.')
+    sys.exit(out)

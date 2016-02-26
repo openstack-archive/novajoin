@@ -1,0 +1,2 @@
+include LICENSE README.md scripts/novajoin-install
+recursive-include files *.py *.template *.sh *.json

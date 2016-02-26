@@ -1,0 +1,1 @@
+{"cloud-init": "#cloud-config\nsystem_info:\n  default_user:\n    name: cloud-user\n    plain_text_passwd: password\n    lock_passwd: False\npackages:\n - python-simplejson\n - ipa-client\n - ipa-admintools\n - openldap-clients\nruncmd:\n - sh -x /tmp/setup-ipa-client.sh > /var/log/setup-ipa-client.sh.log 2>&1"}
