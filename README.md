@@ -1,9 +1,24 @@
+==== WARNING ====
+
+These instructions are incomplete and DO NOT WORK
+
 novajoin Package
 ==================
 
-This Python package provides a hook in the OpenStack nova compute
-service to manage host instantiation in an IPA server.
+This Python package provides a vendordata plugin for the OpenStack nova
+metadata service to manage host instantiation in an IPA server.
 
+It consists of two services:
+
+    - REST service
+    - notification listener
+
+
+The REST service will respond to dynamic requests from the nova metadata
+server. This is used to add hosts into IPA.
+
+The notification listener will handle instance delete requests and remove
+the appropriate host from IPA.
 
 Build
 =====
@@ -24,7 +39,7 @@ In this directory, run:
 Configuration
 =============
 
-Run novajoin-install to install and configure the hooks on a
+Run novajoin-install to install and configure the plugin on a
 pre-installed nova server.
 
 Pre-requisites
@@ -58,10 +73,10 @@ The installer takes the following options:
             password is obtained interactively
 --password-file: the file containing the password for the principal.
 
-Hook Configuration
+Metadata REST Service Configuration
 ==================
 
-The hook is configured in /etc/nova/ipaclient.conf in the DEFAULT
+The REST service is configured in /etc/nova/ipaclient.conf in the DEFAULT
 section.  It provides the following options:
 
 url: The JSON RPC URL to an IPA server, e.g. https://ipa.host.domain/ipa/json
