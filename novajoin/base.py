@@ -190,6 +190,7 @@ class ActionDispatcher(object):
     def default(self, data):
         raise NotImplementedError()
 
+
 class TextDeserializer(ActionDispatcher):
     """Default request body deserialization."""
 
@@ -198,6 +199,7 @@ class TextDeserializer(ActionDispatcher):
 
     def default(self, datastring):
         return {}
+
 
 class JSONDeserializer(TextDeserializer):
 
@@ -210,6 +212,7 @@ class JSONDeserializer(TextDeserializer):
 
     def default(self, datastring):
         return {'body': self._from_json(datastring)}
+
 
 class DictSerializer(ActionDispatcher):
     """Default request body serialization."""
@@ -227,6 +230,7 @@ class JSONDictSerializer(DictSerializer):
     def default(self, data):
         return jsonutils.dump_as_bytes(data)
 
+
 def action_peek_json(body):
     """Determine action to invoke."""
 
@@ -243,6 +247,7 @@ def action_peek_json(body):
 
     # Return the action and the decoded body...
     return list(decoded.keys())[0]
+
 
 class ResponseObject(object):
     """Bundles a response object with appropriate serializers.
@@ -283,6 +288,7 @@ class ResponseObject(object):
         """Deletes the header with the given name."""
 
         del self._headers[key.lower()]
+
     def _bind_method_serializers(self, meth_serializers):
         """Binds method serializers with the response object.
 
@@ -413,7 +419,6 @@ class ResourceExceptionHandler(object):
             LOG.info("HTTP exception thrown: %s", six.text_type(ex_value))
             raise Fault(ex_value)
         LOG.info("HTTP exception thrown: %s", six.text_type(ex_value))
-        #raise Fault("something bad happened")
 
         # We didn't handle the exception
         return False

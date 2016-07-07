@@ -27,7 +27,6 @@ from webob.util import status_generic_reasons
 from webob.util import status_reasons
 
 
-
 LOG = logging.getLogger(__name__)
 
 
@@ -112,6 +111,7 @@ class JoinException(Exception):
 class NotAuthorized(JoinException):
     message = "Not authorized."
     code = 403
+
 
 class Invalid(JoinException):
     message = "Unacceptable parameters."

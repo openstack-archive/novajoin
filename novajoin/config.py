@@ -45,18 +45,6 @@ service_opts = [
 ]
 
 
-#CONF = cfg.ConfigOpts()
 CONF = cfg.CONF
 CONF.register_opts(service_opts)
 log.register_options(CONF)
-
-#    CONF(sys.argv[1:], project='join', version='1.0.0')
-#    log.setup(CONF, 'join')
-#    launcher = process_launcher()
-#    server = WSGIService('join')
-#    launcher.launch_service(server, workers=server.workers)
-#    launcher.wait()
-#
-#
-#if __name__ == '__main__':
-#    main()

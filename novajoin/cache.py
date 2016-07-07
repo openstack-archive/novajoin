@@ -27,10 +27,11 @@ class Cache(object):
 
     def _getconn(self):
         self.conn = sqlite3.connect('test.db')
- 
+
     def add(self, id, data):
         self._getconn()
-        s = ("INSERT INTO cache (id, data) VALUES (\'{id}\', \'{data}\')".format(id=id, data=data));
+        s = ("INSERT INTO cache (id, data) VALUES (\'{id}\', \'{data}\')"
+             .format(id=id, data=data))
         self.conn.execute(s)
         self.conn.commit()
         self.conn.close()
@@ -38,7 +39,8 @@ class Cache(object):
     def get(self, id):
         data = None
         self._getconn()
-        cursor = self.conn.execute("SELECT id, data from cache where id=\'%s\'" % id)
+        cursor = self.conn.execute("SELECT id, data from cache where "
+                                   "id=\'%s\'" % id)
         for row in cursor:
             data = row[1]
         self.conn.close()

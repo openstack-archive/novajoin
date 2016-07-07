@@ -33,13 +33,14 @@ CONF = config.CONF
 
 LOG = logging.getLogger(__name__)
 
+
 class NotificationEndpoint(object):
 
     filter_rule = oslo_messaging.notify.filter.NotificationFilter(
-         publisher_id='^compute.*|^network.*',
-         event_type='^compute.instance.create.end|' \
-                    '^compute.instance.delete.end|' \
-                    '^network.floating_ip.(dis)?associate',)
+        publisher_id='^compute.*|^network.*',
+        event_type='^compute.instance.create.end|'
+                   '^compute.instance.delete.end|'
+                   '^network.floating_ip.(dis)?associate',)
 
     def __init__(self):
         self.uuidcache = cache.Cache()
@@ -95,10 +96,11 @@ def main():
     logging.setup(CONF, 'join')
 
     transport = oslo_messaging.get_transport(CONF)
-    targets = [ oslo_messaging.Target(topic='notifications') ]
-    endpoints = [ NotificationEndpoint() ]
+    targets = [oslo_messaging.Target(topic='notifications')]
+    endpoints = [NotificationEndpoint()]
 
-    server = oslo_messaging.get_notification_listener(transport, targets, endpoints)
+    server = oslo_messaging.get_notification_listener(transport, targets,
+                                                      endpoints)
     LOG.info("Starting")
     server.start()
     try:
