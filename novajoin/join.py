@@ -135,6 +135,8 @@ class JoinController(Controller):
         data['ipaotp'] = ipaotp
         if hostname:
             if CONF.project_subdomain:
+                # FIXME
+                project = 'foo'
                 hostname = '%s.%s.%s' % (hostname, project, CONF.domain)
             else:
                 hostname = '%s.%s' % (hostname, CONF.domain)

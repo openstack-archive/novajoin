@@ -17,6 +17,7 @@
 # notification_topic = notifications
 # notify_on_state_change = vm_state
 
+import sys
 import time
 import json
 import oslo_messaging
@@ -90,6 +91,7 @@ class NotificationEndpoint(object):
 
 def main():
 
+    CONF(sys.argv[1:], project='join', version='1.0.0')
     logging.setup(CONF, 'join')
 
     transport = oslo_messaging.get_transport(CONF)

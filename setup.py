@@ -46,11 +46,9 @@ setup(
 
     data_files=[('/usr/share/novajoin', ['files/cloud-config.json',
                                          'files/freeipa.json',
-                                         'files/join.conf',
-                                         'files/api-paste.ini',
                                          'files/join.conf.template',
                                          ],),
-                ('/etc/join', ['files/api-paste.conf'],),
+                ('/etc/join', ['files/api-paste.ini'],),
                 ('/usr/sbin', ['scripts/novajoin-notify'],),
                 ('/usr/sbin', ['scripts/novajoin-server'],),
                 ('/usr/sbin', ['scripts/novajoin-install'],),

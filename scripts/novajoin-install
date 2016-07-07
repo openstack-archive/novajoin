@@ -96,25 +96,6 @@ def install(args):
 
     api.bootstrap(context='novajoin')
     api.finalize()
-    api.Backend.rpcclient.connect()
-
-    try:
-        result = api.Command.service_add(u'nova/%s@%s' %
-                                         (args['hostname'], api.env.realm),
-                                         force=True)
-    except errors.DuplicateEntry:
-        pass
-    except Exception as e:
-        raise ConfigurationError(
-            'Failed to add service: %s' % e)
-
-    try:
-        if os.path.exists(KEYTAB):
-            os.unlink(KEYTAB)
-    except OSError as e:
-        raise ConfigurationError(
-            'Could not remove %s: %s' % (keytab, e)
-        )
 
     ccache_dir = tempfile.mkdtemp(prefix='krbcc')
 
@@ -133,6 +114,26 @@ def install(args):
     except RuntimeError as e:
         raise ConfigurationError("Kerberos authentication failed: %s" % e)
 
+    api.Backend.rpcclient.connect()
+
+    try:
+        result = api.Command.service_add(u'nova/%s@%s' %
+                                         (args['hostname'], api.env.realm),
+                                         force=True)
+    except errors.DuplicateEntry:
+        pass
+    except Exception as e:
+        raise ConfigurationError(
+            'Failed to add service: %s' % e)
+
+    try:
+        if os.path.exists(KEYTAB):
+            os.unlink(KEYTAB)
+    except OSError as e:
+        raise ConfigurationError(
+            'Could not remove %s: %s' % (KEYTAB, e)
+        )
+
     run(['ipa-getkeytab',
          '-s', api.env.server,
          '-p', 'nova/%s@%s' % (args['hostname'], api.env.realm),
@@ -142,7 +143,8 @@ def install(args):
     logger.info('Installing default config files')
 
     confopts = {'FQDN': args['hostname'],
-                'MASTER': api.env.server}  # pylint: disable=no-member
+                'MASTER': api.env.server,  # pylint: disable=no-member
+                'DOMAIN': api.env.domain,}  # pylint: disable=no-member
 
     write_from_template(JOINCONF,
                         os.path.join(DATADIR, 'join.conf.template'),

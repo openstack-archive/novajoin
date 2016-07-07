@@ -235,6 +235,11 @@ class IPAClient(IPANovaJoinBase):
             LOG.debug('IPA is not configured')
             return
 
+        if metadata is None:
+            metadata = {}
+        if system_metadata is None:
+            system_metadata = {}
+
         enroll = metadata.get('ipa_enroll', '')
         if enroll.lower() != 'true':
             LOG.debug('IPA enrollment not requested')
