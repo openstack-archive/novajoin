@@ -29,14 +29,16 @@ import getpass
 from string import Template
 from six.moves import input
 from six.moves.configparser import ConfigParser
-from ipalib.config import Env
 from ipapython.ipautil import run, kinit_password, user_input
+from ipalib import api
+from ipalib import errors
 
 
 DATADIR = '/usr/share/novajoin'
-IPACONF = '/etc/ipa/default.conf'
 NOVADIR = '/etc/nova'
-IPACLIENT = 'ipaclient.conf'
+IPACONF = '/etc/ipa/default.conf'
+JOINCONF = '/etc/join/join.conf'
+KEYTAB = '/etc/join/krb5.keytab'
 
 
 class ConfigurationError(StandardError):
@@ -89,18 +91,29 @@ def write_from_template(destfile, template, opts):
 def install(args):
     logger.info('Installation initiated')
 
-    ipaenv = Env()
-    ipaenv._merge_from_file(IPACONF)
-
     if not os.path.exists('/etc/ipa/default.conf'):
         raise ConfigurationError('Must be enrolled in IPA')
 
+    api.bootstrap(context='novajoin')
+    api.finalize()
+    api.Backend.rpcclient.connect()
+
     try:
-        if os.path.exists('/etc/nova/ipauser.keytab'):
-            os.unlink('/etc/nova/ipauser.keytab')
+        result = api.Command.service_add(u'nova/%s@%s' %
+                                         (args['hostname'], api.env.realm),
+                                         force=True)
+    except errors.DuplicateEntry:
+        pass
+    except Exception as e:
+        raise ConfigurationError(
+            'Failed to add service: %s' % e)
+
+    try:
+        if os.path.exists(KEYTAB):
+            os.unlink(KEYTAB)
     except OSError as e:
         raise ConfigurationError(
-            'Could not remove /etc/nova/ipauser.keytab: %s' % e
+            'Could not remove %s: %s' % (keytab, e)
         )
 
     ccache_dir = tempfile.mkdtemp(prefix='krbcc')
@@ -113,7 +126,7 @@ def install(args):
 
     principal = args['principal']
     if principal.find('@') == -1:
-        principal = '%s@%s' % (principal, ipaenv.realm)
+        principal = '%s@%s' % (principal, api.env.realm)
 
     try:
         kinit_password(principal, args['password'], ccache_name)
@@ -121,23 +134,21 @@ def install(args):
         raise ConfigurationError("Kerberos authentication failed: %s" % e)
 
     run(['ipa-getkeytab',
-         '-s', ipaenv.server,
-         '-p', 'nova/%s@%s' % (args['hostname'], ipaenv.realm),
-         '-k', '/etc/nova/ipauser.keytab'],
+         '-s', api.env.server,
+         '-p', 'nova/%s@%s' % (args['hostname'], api.env.realm),
+         '-k', KEYTAB],
         env=env)
 
     logger.info('Installing default config files')
 
     confopts = {'FQDN': args['hostname'],
-                'MASTER': ipaenv.server}  # pylint: disable=no-member
+                'MASTER': api.env.server}  # pylint: disable=no-member
 
-    nova_ipa_conf = os.path.join(NOVADIR, IPACLIENT)
-
-    write_from_template(nova_ipa_conf,
-                        os.path.join(DATADIR, IPACLIENT + '.template'),
+    write_from_template(JOINCONF,
+                        os.path.join(DATADIR, 'join.conf.template'),
                         confopts)
 
-    FILES = ['setup-ipa-client.sh', 'cloud-config.json']
+    FILES = ['cloud-config.json']
     for fn in FILES:
         dst = os.path.join(NOVADIR, fn)
         source = os.path.join(DATADIR, fn)
@@ -154,7 +165,7 @@ def install(args):
     # instance name to set the hostname.
     config.set('DEFAULT',
                'dhcp_domain',
-               ipaenv.domain)
+               api.env.domain)
 
     with open('/etc/nova/nova.conf', 'w') as f:
         config.write(f)
@@ -165,8 +176,8 @@ def install(args):
         raise ConfigurationError('User: %s not found on the system' %
                                  args['user'])
 
-    os.chown('/etc/nova/ipauser.keytab', user.pw_uid, user.pw_gid)
-    os.chmod('/etc/nova/ipauser.keytab', 0o600)
+    os.chown(KEYTAB, user.pw_uid, user.pw_gid)
+    os.chmod(KEYTAB, 0o600)
 
     logger.info('Importing IPA metadata')
     (stdout, stderr, returncode) = run(
@@ -264,5 +275,5 @@ if __name__ == '__main__':
         if out == 0:
             logger.info('Installation complete.')
             logger.info(
-                'Please restart nova-compute to enable the join service.')
+                'Please restart nova-api to enable the join service.')
     sys.exit(out)

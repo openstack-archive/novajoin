@@ -1,7 +1,3 @@
-==== WARNING ====
-
-These instructions are incomplete and DO NOT WORK
-
 novajoin Package
 ==================
 
@@ -12,7 +8,6 @@ It consists of two services:
 
     - REST service
     - notification listener
-
 
 The REST service will respond to dynamic requests from the nova metadata
 server. This is used to add hosts into IPA.
@@ -36,11 +31,35 @@ In this directory, run:
   python setup.py install
 
 
+Package Requirements
+====================
+
+Beyond those packages normally installed by Openstack, these are also
+required:
+
+python-kerberos
+
+
 Configuration
 =============
 
 Run novajoin-install to install and configure the plugin on a
 pre-installed nova server.
+
+nova currently needs to be manually configured to enable the
+novajoin REST service and enable notifications:
+
+vendordata_providers = StaticJSON, DynamicJSON
+vendordata_dynamic_targets = 'join@http://127.0.0.1:9999/v1/'
+vendordata_driver = nova.api.metadata.vendordata_dynamic.DynamicVendorData
+vendordata_dynamic_connect_timeout = 5
+vendordata_dynamic_read_timeout = 30
+vendordata_jsonfile_path = /etc/nova/cloud-config.json
+
+notification_driver = messaging
+notification_topic = notifications
+notify_on_state_change = vm_state
+
 
 Pre-requisites
 --------------
@@ -60,7 +79,7 @@ This will:
   role in IPA
 - add the IPA metadata to the glance metadata service
 
-The nova compute service will need to be manually restarted.
+The nova-api service will need to be manually restarted.
 
 The installer takes the following options:
 
@@ -74,18 +93,21 @@ The installer takes the following options:
 --password-file: the file containing the password for the principal.
 
 Metadata REST Service Configuration
-==================
+===================================
 
-The REST service is configured in /etc/nova/ipaclient.conf in the DEFAULT
+The REST service is configured in /etc/join/join.conf in the DEFAULT
 section.  It provides the following options:
 
+join_listen_port: The TCP port to listen on. Defaults to 9999.
+api_paste_config: The paste configuration file to use.
+debug: Enable additional debugging output. Default is False.
+auth_strategy: The authentication strategy to use
 url: The JSON RPC URL to an IPA server, e.g. https://ipa.host.domain/ipa/json
 keytab: The Kerberos keytab containing the credentails for the user
         nova will use to manage hosts. The default is /etc/krb5.keytab.
 service_name: The service name of the JSON RPC handler. This is normally
         HTTP@<ipa master>
-domain: If dhcp_domain is not set in nova.conf then this value is used
-        as the default domain for IPA hosts.
+domain: The domain to associate with IPA hosts.
 connect_retries: The number of times to attempt to contact the IPA
         server before failing.
 project_subdomain: Use the project the instance is created in as the
@@ -95,14 +117,13 @@ project_subdomain: Use the project the instance is created in as the
 normalize_project: A project name can contain values not allowed as a
         DNS label. This will convert invalid values to a dash (-)
         dropping leading and trailing dashes.
-inject_files: Files to inject into the VM.
 
 
 Origin
 ======
 
 This builds on the work of Rich Megginson and Nathan Kinder. Rich
-did the initial implementation visible at
+did the initial hooks implementation visible at
 https://github.com/richm/rdo-vm-factory/blob/master/rdo-ipa-nova
 
 

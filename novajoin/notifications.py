@@ -90,7 +90,6 @@ class NotificationEndpoint(object):
 
 def main():
 
-    CONF(default_config_files=['join.conf'])
     logging.setup(CONF, 'join')
 
     transport = oslo_messaging.get_transport(CONF)

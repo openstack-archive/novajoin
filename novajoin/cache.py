@@ -18,7 +18,7 @@ import sqlite3
 class Cache(object):
 
     def __init__(self):
-        self.conn = self._getconn()
+        self._getconn()
 
         self.conn.execute('''CREATE TABLE IF NOT EXISTS cache
                           (id TEXT PRIMARY KEY     NOT NULL,

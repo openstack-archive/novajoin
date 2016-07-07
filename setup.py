@@ -20,12 +20,12 @@ setup(
     name='novajoin',
     version='1.0.0',
 
-    description='Nova hooks to enroll IPA clients',
+    description='Nova integration to enroll IPA clients',
 
     author='Rob Crittenden',
     author_email='rcritten@redhat.com',
 
-    url='https://github.com/rcritten/rdo-vm-factory.git',
+    url='https://github.com/rcritten/novajoin.git',
 
     classifiers=['Development Status :: 3 - Alpha',
                  'License :: OSI Approved :: Apache Software License',
@@ -44,19 +44,15 @@ setup(
 
     packages=['novajoin'],
 
-    entry_points={
-        'nova.hooks': [
-            'build_instance = novajoin.hooks:IPABuildInstanceHook',
-            'delete_instance = novajoin.hooks:IPADeleteInstanceHook',
-            'instance_network_info = novajoin.hooks:IPANetworkInfoHook',
-        ],
-    },
-
     data_files=[('/usr/share/novajoin', ['files/cloud-config.json',
-                                         'files/ipaclient.conf.template',
-                                         'files/setup-ipa-client.sh',
                                          'files/freeipa.json',
+                                         'files/join.conf',
+                                         'files/api-paste.ini',
+                                         'files/join.conf.template',
                                          ],),
+                ('/etc/join', ['files/api-paste.conf'],),
+                ('/usr/sbin', ['scripts/novajoin-notify'],),
+                ('/usr/sbin', ['scripts/novajoin-server'],),
                 ('/usr/sbin', ['scripts/novajoin-install'],),
                 ('/usr/libexec', ['scripts/novajoin-ipa-setup.sh'],),
                 ],

@@ -104,8 +104,7 @@ def process_launcher():
 
 def main():
 
-#    CONF(sys.argv[1:], project='join', version='1.0.0')
-    CONF(default_config_files=['join.conf'])
+    CONF(sys.argv[1:], project='join', version='1.0.0')
     log.setup(CONF, 'join')
     launcher = process_launcher()
     server = WSGIService('join')

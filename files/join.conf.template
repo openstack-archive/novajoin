@@ -1,19 +1,19 @@
 [DEFAULT]
 join_listen_port = 9999
-api_paste_config = /path/to/api-paste.ini
+api_paste_config = /etc/join/api-paste.ini
 debug = True
 auth_strategy=keystone
 
-keytab = /path/to/krb5.keytab
-url = https://ipa.example.com/ipa/json
-service_name = HTTP@ipa.example.com
+keytab = /etc/join/krb5.keytab
+url = https://$MASTER/ipa/json
+service_name = HTTP@$MASTER
 cacert = /etc/ipa/ca.crt
 connect_retries = 1
 
 [keystone_authtoken]
 memcache_servers = 192.168.0.253:11211
 signing_dir = /var/cache/nova
-cafile = /path/to/ca-bundle.pem
+#cafile = /path/to/ca-bundle.pem
 auth_uri = http://192.168.0.253:5000
 project_domain_id = default
 project_name = service
