@@ -60,6 +60,10 @@ notification_driver = messaging
 notification_topic = notifications
 notify_on_state_change = vm_state
 
+Note that the IPA integration assumes that the IPA CA is in the
+system bundle. If it is not, or python-requests is not configured
+to use the system bundle, then you will get CERTIFICATE_VERIFY_FAILED
+errors.
 
 Pre-requisites
 --------------
