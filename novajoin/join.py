@@ -114,8 +114,8 @@ class JoinController(Controller):
         image_id = body.get('image-id')
         user_data = body.get('user-data')
         hostname = body.get('hostname')
-        metadata = body.get('metadata')
-        system_metadata = body.get('system_metadata')
+        metadata = body.get('metadata', {})
+        system_metadata = body.get('system_metadata', {})
 
         enroll = metadata.get('ipa_enroll', '')
 
