@@ -145,14 +145,6 @@ class APIMapper(routes.Mapper):
 
 class ProjectMapper(APIMapper):
     def resource(self, member_name, collection_name, **kwargs):
-        if 'parent_resource' not in kwargs:
-            kwargs['path_prefix'] = '{project_id}/'
-        else:
-            parent_resource = kwargs['parent_resource']
-            p_collection = parent_resource['collection_name']
-            p_member = parent_resource['member_name']
-            kwargs['path_prefix'] = '{project_id}/%s/:%s_id' % (p_collection,
-                                                                p_member)
         routes.Mapper.resource(self,
                                member_name,
                                collection_name,
@@ -602,12 +594,6 @@ class Resource(Application):
 
         # Update the action args
         action_args.update(contents)
-
-        project_id = action_args.pop("project_id", None)
-        context = request.environ.get('cinder.context')
-        if context and project_id and (project_id != context.project_id):
-            msg = "Malformed request url"
-            return Fault(webob.exc.HTTPBadRequest(explanation=msg))
 
         response = None
         try:
