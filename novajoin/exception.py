@@ -128,3 +128,29 @@ class InvalidContentType(Invalid):
 
 class MalformedRequestBody(JoinException):
     message = "Malformed message body: %(reason)s"
+
+
+class GlanceConnectionFailed(JoinException):
+    message = "Connection to glance failed: %(reason)s"
+
+
+class ImageLimitExceeded(JoinException):
+    message = "Image quota exceeded"
+
+
+class ImageNotAuthorized(JoinException):
+    message = "Not authorized for image %(image_id)s."
+
+
+class NotFound(JoinException):
+    message = "Resource could not be found."
+    code = 404
+    safe = True
+
+
+class ImageNotFound(NotFound):
+    message = "Image %(image_id)s could not be found."
+
+
+class PolicyNotAuthorized(NotAuthorized):
+    message = "Policy doesn't allow %(action)s to be performed."

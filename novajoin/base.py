@@ -18,16 +18,18 @@
 import paste.urlmap
 import routes
 import webob.dec
-from oslo_utils import excutils
-from oslo_log import log
-from oslo_serialization import jsonutils
 from oslo_config import cfg
+from oslo_context import context
+from oslo_log import log
+from oslo_middleware import request_id
+from oslo_serialization import jsonutils
+from oslo_service import wsgi
+from oslo_utils import excutils
+from oslo_utils import strutils
 import six
 import six.moves.urllib.parse as urlparse
 import webob.exc
 from novajoin import exception
-from oslo_service import wsgi
-from oslo_utils import strutils
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -736,3 +738,66 @@ class Fault(webob.exc.HTTPException):
 
     def __str__(self):
         return self.wrapped_exc.__str__()
+
+
+class Middleware(Application):
+    """Base WSGI middleware.
+
+    These classes require an application to be
+    initialized that will be called next.  By default the middleware will
+    simply call its wrapped app, or you can override __call__ to customize its
+    behavior.
+
+    """
+
+    @classmethod
+    def factory(cls, global_config, **local_config):
+        """Used for paste app factories in paste.deploy config files.
+
+        Any local configuration (that is, values under the [filter:APPNAME]
+        section of the paste config) will be passed into the `__init__` method
+        as kwargs.
+
+        A hypothetical configuration would look like:
+
+            [filter:analytics]
+            redis_host = 127.0.0.1
+            paste.filter_factory = cinder.api.analytics:Analytics.factory
+
+        which would result in a call to the `Analytics` class as
+
+            import cinder.api.analytics
+            analytics.Analytics(app_from_paste, redis_host='127.0.0.1')
+
+        You could of course re-implement the `factory` method in subclasses,
+        but using the kwarg passing it shouldn't be necessary.
+
+        """
+        def _factory(app):
+            return cls(app, **local_config)
+        return _factory
+
+    def __init__(self, application):
+        self.application = application
+
+    def process_request(self, req):
+        """Called on each request.
+
+        If this returns None, the next application down the stack will be
+        executed. If it returns a response then that response will be returned
+        and execution will stop here.
+
+        """
+        return None
+
+    def process_response(self, response):
+        """Do whatever you'd like to the response."""
+        return response
+
+    @webob.dec.wsgify(RequestClass=Request)
+    def __call__(self, req):
+        response = self.process_request(req)
+        if response:
+            return response
+        response = req.get_response(self.application)
+        return self.process_response(response)

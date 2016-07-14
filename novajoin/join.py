@@ -20,6 +20,8 @@ from oslo_config import cfg
 from novajoin.ipa import IPAClient
 from novajoin import base
 from novajoin import cache
+from novajoin.glance import get_default_image_service
+
 
 CONF = cfg.CONF
 
@@ -127,6 +129,10 @@ class JoinController(Controller):
             data = self.uuidcache.get(instance_id)
             if data:
                 return jsonutils.loads(data)
+
+        context = req.environ.get('novajoin.context')
+        image_service = get_default_image_service()
+        image_meta = image_service.show(context, image_id)
 
         data = {}
 

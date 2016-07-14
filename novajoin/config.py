@@ -42,6 +42,14 @@ service_opts = [
                 'instance.project.domain'),
     cfg.BoolOpt('normalize_project', default=True,
                 help='Normalize the project name to be a valid DNS label'),
+    cfg.ListOpt('glance_api_servers',
+                default=None,
+                help='A list of the URLs of glance API servers available to '
+                     'cinder ([http[s]://][hostname|ip]:port). If protocol '
+                     'is not specified it defaults to http.'),
+    cfg.IntOpt('glance_num_retries',
+               default=0,
+               help='Number retries when downloading an image from glance'),
 ]
 
 

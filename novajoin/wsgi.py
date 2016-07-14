@@ -14,7 +14,6 @@
 
 import sys
 from oslo_concurrency import processutils
-from oslo_config import cfg
 from oslo_service import service
 from oslo_service import wsgi
 from oslo_log import log
