@@ -20,6 +20,7 @@ from oslo_config import cfg
 from novajoin.ipa import IPAClient
 from novajoin import base
 from novajoin import cache
+from novajoin import exception
 from novajoin.glance import get_default_image_service
 
 
@@ -117,7 +118,6 @@ class JoinController(Controller):
         user_data = body.get('user-data')
         hostname = body.get('hostname')
         metadata = body.get('metadata', {})
-        system_metadata = body.get('system_metadata', {})
 
         enroll = metadata.get('ipa_enroll', '')
 
@@ -132,7 +132,14 @@ class JoinController(Controller):
 
         context = req.environ.get('novajoin.context')
         image_service = get_default_image_service()
-        image_meta = image_service.show(context, image_id)
+        try:
+            image = image_service.show(context, image_id)
+        except exception.ImageNotFound as e:
+            # The image metadata is not a show stopper, proceed
+            # without it.
+            image_metadata = {}
+        else:
+            image_metadata = image.get('properties', {})
 
         data = {}
 
@@ -154,7 +161,7 @@ class JoinController(Controller):
                 self.uuidcache.add(instance_id, jsonutils.dumps(data))
                 ipaclient = IPAClient()
                 ipaclient.add_host(data['hostname'], ipaotp, metadata,
-                                   system_metadata)
+                                   image_metadata)
             except Exception as e:
                 LOG.error('caching or adding host failed %s', e)
 

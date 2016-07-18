@@ -224,7 +224,7 @@ class IPANovaJoinBase(object):
 
 class IPAClient(IPANovaJoinBase):
 
-    def add_host(self, hostname, ipaotp, metadata={}, system_metadata={}):
+    def add_host(self, hostname, ipaotp, metadata={}, image_metadata={}):
         """
         If requested in the metadata, add a host to IPA. The assumption
         is that hostname is already fully-qualified.
@@ -237,8 +237,8 @@ class IPAClient(IPANovaJoinBase):
 
         if metadata is None:
             metadata = {}
-        if system_metadata is None:
-            system_metadata = {}
+        if image_metadata is None:
+            image_metadata = {}
 
         enroll = metadata.get('ipa_enroll', '')
         if enroll.lower() != 'true':
@@ -250,8 +250,8 @@ class IPAClient(IPANovaJoinBase):
         params = [hostname]
         hostclass = metadata.get('ipa_hostclass', '')
         location = metadata.get('ipa_host_location', '')
-        osdistro = system_metadata.get('image_os_distro', None)
-        osver = system_metadata.get('image_os_version', None)
+        osdistro = image_metadata.get('os_distro', None)
+        osver = image_metadata.get('os_version', None)
 #            'description': 'IPA host for %s' % inst.display_description,
         hostargs = {
             'description': 'IPA host for OpenStack',
