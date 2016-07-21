@@ -132,12 +132,15 @@ class JoinController(Controller):
 
         context = req.environ.get('novajoin.context')
         image_service = get_default_image_service()
+        image_metadata = {}
         try:
             image = image_service.show(context, image_id)
-        except exception.ImageNotFound as e:
+        except exception.ImageNotFound:
             # The image metadata is not a show stopper, proceed
             # without it.
-            image_metadata = {}
+            pass
+        except exception.ImageNotAuthorized as e:
+            LOG.error('Failed to get image, proceeding anyway: %s', e)
         else:
             image_metadata = image.get('properties', {})
 
