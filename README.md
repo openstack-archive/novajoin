@@ -123,6 +123,19 @@ normalize_project: A project name can contain values not allowed as a
         dropping leading and trailing dashes.
 
 
+Usage
+=====
+
+Sample usage from the command-line:
+
+$ openstack server create --flavor m1.tiny --image cirros-0.3.4-x86_64-uec test --property ipa_enroll=True
+$ ssh <IP>
+$ curl http://169.254.169.254/openstack/2016-10-06/vendor_data2.json
+
+The curl output will include a "join" element in the returned dict.
+Thsi will contain a hostname and ipaotp value. These are used for
+enrollment.
+
 Origin
 ======
 
