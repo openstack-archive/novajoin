@@ -70,7 +70,7 @@ class WSGIService(service.ServiceBase):
         """
         self.server.start()
         self.port = self.server.port
-        print "Starting on port %d" % self.port
+        LOG.info("Starting on port %d" % self.port)
 
     def stop(self):
         """Stop serving this API.
