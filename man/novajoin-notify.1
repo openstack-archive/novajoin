@@ -1,0 +1,20 @@
+.TH "novajoin-notify" "1" "Aug 16 2016" "novajoin" "novajoin Manual Pages"
+.SH "NAME"
+novajoin\-notify \- AMQP listening service for novajoin
+.SH "SYNOPSIS"
+novajoin\-notify
+
+.SH "DESCRIPTION"
+This service listens on the AMQP notification queue for instance deletion
+notifications. If the host has ipa_enroll set to True in its metadata then
+a host-del command is issued to the IPA server for the host being removed.
+
+As with novajoin-server the FQDN of the instance is constructed from
+the instance name + the domain configured in the novajoin service.
+
+.SH "CONFIGURATION"
+See novajoin-server for configuration options of join.conf.
+.TP
+.SH "SEEALSO"
+.BR novajoin\-install(1), 
+.BR novajoin\-server(1)

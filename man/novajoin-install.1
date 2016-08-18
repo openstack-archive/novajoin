@@ -1,0 +1,46 @@
+.TH "novajoin-install" "1" "Aug 16 2016" "novajoin" "novajoin Manual Pages"
+.SH "NAME"
+novajoin\-install \- Configure a novajoin server
+.SH "SYNOPSIS"
+novajoin\-install [\fIOPTION\fR]...
+
+.SH "DESCRIPTION"
+Configures a machine as a novajoin server. 
+
+The machine must first be configured as an IPA client. It does not need to be running on a nova controller.
+.SH "OPTIONS"
+Nova join Install Options
+
+\fB\-h\fR, \fB\-\-help\fR
+          show this help message and exit
+.TP
+\fB\-\-hostname\fB \fIHOSTNAME\fR
+Machine's fully qualified host name
+.TP
+\fB\-\-user\fR \fIUSER\fR
+User that nova services run as
+.TP
+\fB\-\-principal\fR \fIPRINCIPAL\fR
+principal to use to setup IPA integration
+.TP
+\fB\-\-password\fR \fIPASSWORD\fR
+password for the principal
+.TP
+\fB\-\-password\-file\fR \fIPASSWORDFILE\fR
+path to file containing password for the principal
+.TP
+\fB\-\-keystone\-auth\fR \fIKEYSTONE_AUTH\fR
+Keystone auth URI
+.TP
+\fB\-\-keystone\-identity\fR \fIKEYSTONE_IDENTITY\fR
+Keystone identity URI
+.TP
+\fB\-\-nova\-password\fR \fINOVA_PASSWORD\fR
+Nova service user password
+.SH "EXIT STATUS"
+0 if the installation was successful
+
+1 if an error occurred
+.SH "SEEALSO"
+.BR novajoin\-server(1), 
+.BR novajoin\-notify(1)
