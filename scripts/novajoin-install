@@ -144,7 +144,11 @@ def install(args):
 
     confopts = {'FQDN': args['hostname'],
                 'MASTER': api.env.server,  # pylint: disable=no-member
-                'DOMAIN': api.env.domain}  # pylint: disable=no-member
+                'DOMAIN': api.env.domain,  # pylint: disable=no-member
+                'KEYSTONE_AUTH': args['keystone_auth'],
+                'KEYSTONE_IDENTITY': args['keystone_identity'],
+                'NOVA_PASSWORD': args['nova_password'],
+                }
 
     write_from_template(JOINCONF,
                         os.path.join(DATADIR, 'join.conf.template'),
@@ -186,7 +190,7 @@ def install(args):
         ['glance',
          'md-namespace-import',
          '--file',
-         '/usr/share/freeipa.json'], raiseonerr=False)
+         '/usr/share/novajoin/freeipa.json'], raiseonerr=False)
     if returncode != 0:
         logger.error('Adding IPA metadata failed: %s' % stderr)
 
@@ -211,6 +215,12 @@ def parse_args():
     parser.add_argument('--password-file', dest='passwordfile',
                         help='path to file containing password for '
                              'the principal')
+    parser.add_argument('--keystone-auth', dest='keystone_auth',
+                        help='Keystone auth URI')
+    parser.add_argument('--keystone-identity', dest='keystone_identity',
+                        help='Keystone identity URI')
+    parser.add_argument('--nova-password', dest='nova_password',
+                        help='Nova service user password')
 
     args = vars(parser.parse_args())
 
@@ -230,7 +240,7 @@ def parse_args():
             args['password'] = getpass.getpass("Password for %s: " %
                                                args['principal'])
         except EOFError:
-            password = None
+            args['password'] = None
         if not args['password']:
             raise ConfigurationError('Password must be provided.')
 
@@ -240,6 +250,22 @@ def parse_args():
     if len(args['hostname'].split('.')) < 2:
         raise ConfigurationError('Hostname: %s is not a FQDN' %
                                  args['hostname'])
+
+    if not args['keystone_auth']:
+        args['keystone_auth'] = user_input("Keysone auth URI", "",
+                                           allow_empty=False)
+
+    if not args['keystone_identity']:
+        args['keystone_identity'] = user_input("Keysone identity URI", "",
+                                               allow_empty=False)
+
+    if not args['nova_password']:
+        try:
+            args['nova_password'] = getpass.getpass("nova service Password: ")
+        except EOFError:
+            args['nova_password'] = None
+        if not args['nova_password']:
+            raise ConfigurationError('nova service user password required.')
 
     try:
         pwd.getpwnam(args['user'])
