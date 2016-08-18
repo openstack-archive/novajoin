@@ -26,7 +26,7 @@ class Cache(object):
         self.conn.close()
 
     def _getconn(self):
-        self.conn = sqlite3.connect('test.db')
+        self.conn = sqlite3.connect('/var/run/nova/test.db')
 
     def add(self, id, data):
         self._getconn()
