@@ -53,6 +53,9 @@ def get_api_servers():
     """
     api_servers = []
 
+    if not CONF.glance_api_servers:
+        return None
+
     for api_server in CONF.glance_api_servers:
         api_servers.append(api_server)
     random.shuffle(api_servers)
@@ -72,6 +75,9 @@ class GlanceClient(object):
     def _glance_client(self, context):
         """Instantiate a new glanceclient.Client object."""
 
+        if not self.api_servers:
+            return None
+
         self.api_server = next(self.api_servers)
 
         params = {}
@@ -84,6 +90,9 @@ class GlanceClient(object):
         """Call a glance client method."""
         if self.client is None:
             self.client = self._glance_client(context)
+
+        if self.client is None:
+            return None
 
         retry_excs = (glanceclient.exc.ServiceUnavailable,
                       glanceclient.exc.InvalidEndpoint,
@@ -138,6 +147,9 @@ class GlanceImageService(object):
             images = self._client.call(context, 'list', **params)
         except Exception:
             _reraise_translated_exception()
+        else:
+            if images is None:
+                return []
 
         _images = []
         for image in images:
@@ -164,6 +176,9 @@ class GlanceImageService(object):
         :param image: glance image object
         :return: image metadata dictionary
         """
+
+        if image is None:
+            return {}
 
         # Only v2 is supported in novajoin
         if self._image_schema is None:
@@ -194,6 +209,9 @@ class GlanceImageService(object):
             image = self._client.call(context, 'get', image_id)
         except Exception:
             _reraise_translated_image_exception(image_id)
+        else:
+            if image is None:
+                return {}
 
         base_image_meta = self._translate_from_glance(context, image)
         return base_image_meta
