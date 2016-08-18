@@ -98,9 +98,14 @@ def main():
     transport = oslo_messaging.get_transport(CONF)
     targets = [oslo_messaging.Target(topic='notifications')]
     endpoints = [NotificationEndpoint()]
+    pool = 'listener-novajoin'
 
-    server = oslo_messaging.get_notification_listener(transport, targets,
-                                                      endpoints)
+    server = oslo_messaging.get_notification_listener(transport,
+                                                      targets,
+                                                      endpoints,
+                                                      executor='threading',
+                                                      allow_requeue=True,
+                                                      pool=pool)
     LOG.info("Starting")
     server.start()
     try:
