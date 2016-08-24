@@ -135,13 +135,53 @@ The curl output will include a "join" element in the returned dict.
 Thsi will contain a hostname and ipaotp value. These are used for
 enrollment.
 
+Design
+======
+
+There are quite a few moving parts in novajoin so here is a high-level
+overview of how it fits together.
+
+The OpenStack Newton release added a new type of metadata to the nova
+metadata service: dynamic metadata. This is metadata generated on-the-fly
+and not stored within nova (perhaps for security reasons).
+
+For the case of enrolling a client into IPA using a One-Time Password (OTP)
+the password needs to be generated when the IPA host created and then
+somehow passed to the instance. This is done using dynamic metadata.
+
+The basic sequence of events is:
+
+1. Instance creation is requested to nova, either via Horizon or the
+   command-line.
+2. nova starts the instance and pushes down a cloud-init script provided
+   by novajoin.
+3. cloud-init executes the provided script which installs the ipa-client
+   package, then executes a script which retrieves the metadata from the
+   nova metadata service. This looks like:
+   % curl http://169.254.169.254/openstack/2016-10-06/vendor_data2.json
+4. This request invokes the novajoin dynamic metadata service provided
+   by the novajoin package. This is registered in /etc/nova/nova.conf.
+5. If the instance was created with the property ipa_enroll=True then
+   a host in IPA is created and an OTP generated. The OTP and generated
+   FQDN are returned to nova as a python dictionary. The data is returned
+   from the metadata service as JSON. If the glance image has os_distro
+   and os_version set in its metadata then this will be reflected in the
+   IPA host.
+6. The script provided to cloud-init pulls out the OTP and FQDN and calls
+   ipa-client-install
+
+This results in an IPA-enrolled client with no user interaction.
+
+The novajoin-notify service waits for notifications from nova that an
+instance deletion has been completed. If that instance has the property
+ipa_enroll=True then the host is removed from IPA.
+
 Origin
 ======
 
 This builds on the work of Rich Megginson and Nathan Kinder. Rich
 did the initial hooks implementation visible at
 https://github.com/richm/rdo-vm-factory/blob/master/rdo-ipa-nova
-
 
 Copyright and License
 =====================
