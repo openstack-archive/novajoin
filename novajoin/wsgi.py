@@ -18,6 +18,7 @@ from oslo_service import service
 from oslo_service import wsgi
 from oslo_log import log
 from novajoin import config
+from novajoin import keystone_client
 
 from novajoin import exception
 
@@ -103,6 +104,7 @@ def process_launcher():
 
 def main():
 
+    keystone_client.register_keystoneauth_opts(CONF)
     CONF(sys.argv[1:], project='join', version='1.0.0')
     log.setup(CONF, 'join')
     launcher = process_launcher()

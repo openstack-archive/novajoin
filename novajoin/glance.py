@@ -27,6 +27,7 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 from novajoin import exception
+from novajoin import keystone_client
 import six
 
 
@@ -37,27 +38,23 @@ LOG = logging.getLogger(__name__)
 GLANCE_APIVERSION = 2
 
 
-def generate_identity_headers(context, status='Confirmed'):
-    return {
-        'X-Auth-Token': getattr(context, 'auth_token', None),
-        'X-User-Id': getattr(context, 'user', None),
-        'X-Tenant-Id': getattr(context, 'tenant', None),
-        'X-Roles': ','.join(getattr(context, 'roles', [])),
-        'X-Identity-Status': status,
-    }
-
-
 def get_api_servers():
     """Return iterator of glance api_servers to cycle through the
     list, looping around to the beginning if necessary.
     """
     api_servers = []
 
-    if not CONF.glance_api_servers:
-        return None
+    ks = keystone_client.get_client()
+    catalog = keystone_client.get_service_catalog(ks)
 
-    for api_server in CONF.glance_api_servers:
-        api_servers.append(api_server)
+    image_service = catalog.url_for(service_type='image')
+    if image_service:
+        api_servers.append(image_service)
+
+    if CONF.glance_api_servers:
+        for api_server in CONF.glance_api_servers:
+            api_servers.append(api_server)
+
     random.shuffle(api_servers)
     return itertools.cycle(api_servers)
 
@@ -82,9 +79,9 @@ class GlanceClient(object):
 
         params = {}
 
-        params['identity_headers'] = generate_identity_headers(context)
+        session = keystone_client.get_session()
         return glanceclient.Client(str(self.version), self.api_server,
-                                   **params)
+                                   session=session, **params)
 
     def call(self, context, method, *args, **kwargs):
         """Call a glance client method."""

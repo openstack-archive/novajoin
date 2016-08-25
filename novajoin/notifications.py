@@ -21,6 +21,9 @@ import sys
 import time
 import json
 import oslo_messaging
+from neutronclient.v2_0 import client as neutron_client
+from novaclient import client as nova_client
+from novajoin.keystone_client import get_session, register_keystoneauth_opts
 from oslo_serialization import jsonutils
 from oslo_log import log as logging
 
@@ -34,17 +37,37 @@ CONF = config.CONF
 LOG = logging.getLogger(__name__)
 
 
+def novaclient():
+    session = get_session()
+    return nova_client.Client('2.1', session=session)
+
+
+def neutronclient():
+    session = get_session()
+    return neutron_client.Client(session=session)
+
+
 class NotificationEndpoint(object):
 
     filter_rule = oslo_messaging.notify.filter.NotificationFilter(
         publisher_id='^compute.*|^network.*',
         event_type='^compute.instance.create.end|'
                    '^compute.instance.delete.end|'
-                   '^network.floating_ip.(dis)?associate',)
+                   '^network.floating_ip.(dis)?associate|'
+                   '^floatingip.update.end')
 
     def __init__(self):
         self.uuidcache = cache.Cache()
         self.ipaclient = IPAClient()
+
+    def _generate_hostname(self, hostname):
+        # FIXME: Don't re-calculate the hostname, fetch it from somewhere
+        project = 'foo'
+        if CONF.project_subdomain:
+            host = '%s.%s.%s' % (hostname, project, CONF.domain)
+        else:
+            host = '%s.%s' % (hostname, CONF.domain)
+        return host
 
     def info(self, ctxt, publisher_id, event_type, payload, metadata):
         LOG.debug('notification:')
@@ -54,17 +77,13 @@ class NotificationEndpoint(object):
                   event_type, metadata)
 
         if event_type == 'compute.instance.create.end':
-            LOG.info("Add new host")
+            hostname = self._generate_hostname(payload.get('hostname'))
+            id = payload.get('instance_id')
+            LOG.info("Add new host %s (%s)", id, hostname)
         elif event_type == 'compute.instance.delete.end':
-            LOG.info("Delete host")
-            hostname = payload.get('hostname')
-            # FIXME: Don't re-calculate the hostname, fetch it from somewhere
-            project = 'foo'
-            if CONF.project_subdomain:
-                hostname = '%s.%s.%s' % (hostname, project, CONF.domain)
-            else:
-                hostname = '%s.%s' % (hostname, CONF.domain)
-
+            hostname = self._generate_hostname(payload.get('hostname'))
+            id = payload.get('instance_id')
+            LOG.info("Delete host %s (%s)", id, hostname)
             self.ipaclient.delete_host(hostname, {})
         elif event_type == 'network.floating_ip.associate':
             floating_ip = payload.get('floating_ip')
@@ -86,26 +105,41 @@ class NotificationEndpoint(object):
             else:
                 LOG.error("Could not resolve %s into a hostname",
                           payload.get('instance_id'))
+        elif event_type == 'floatingip.update.end':  # Neutron
+            floatingip = payload.get('floatingip')
+            floating_ip = floatingip.get('floating_ip_address')
+            port_id = floatingip.get('port_id')
+            LOG.info("Neutron floating IP associate: %s" % floating_ip)
+            nova = novaclient()
+            neutron = neutronclient()
+            search_opts = {'id': port_id}
+            ports = neutron.list_ports(**search_opts).get('ports')
+            if len(ports) == 1:
+                device_id = ports[0].get('device_id')
+                if device_id:
+                    server = nova.servers.get(device_id)
+                    if server:
+                        self.ipaclient.add_ip(server.name, floating_ip)
+            else:
+                LOG.error("Expected 1 port, got %d", len(ports))
         else:
             LOG.error("Status update or unknown")
 
 
 def main():
-
+    register_keystoneauth_opts(CONF)
     CONF(sys.argv[1:], project='join', version='1.0.0')
     logging.setup(CONF, 'join')
 
     transport = oslo_messaging.get_transport(CONF)
     targets = [oslo_messaging.Target(topic='notifications')]
     endpoints = [NotificationEndpoint()]
-    pool = 'listener-novajoin'
 
     server = oslo_messaging.get_notification_listener(transport,
                                                       targets,
                                                       endpoints,
                                                       executor='threading',
-                                                      allow_requeue=True,
-                                                      pool=pool)
+                                                      allow_requeue=True)
     LOG.info("Starting")
     server.start()
     try:
