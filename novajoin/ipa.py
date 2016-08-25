@@ -250,8 +250,8 @@ class IPAClient(IPANovaJoinBase):
         params = [hostname]
         hostclass = metadata.get('ipa_hostclass', '')
         location = metadata.get('ipa_host_location', '')
-        osdistro = image_metadata.get('os_distro', None)
-        osver = image_metadata.get('os_version', None)
+        osdistro = image_metadata.get('os_distro', '')
+        osver = image_metadata.get('os_version', '')
 #            'description': 'IPA host for %s' % inst.display_description,
         hostargs = {
             'description': 'IPA host for OpenStack',
