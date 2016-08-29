@@ -240,11 +240,6 @@ class IPAClient(IPANovaJoinBase):
         if image_metadata is None:
             image_metadata = {}
 
-        enroll = metadata.get('ipa_enroll', '')
-        if enroll.lower() != 'true':
-            LOG.debug('IPA enrollment not requested')
-            return
-
         ipareq = {'method': 'host_add', 'id': 0}
 
         params = [hostname]

@@ -20,16 +20,15 @@
 import sys
 import time
 import json
+
+from ipa import IPAClient
 import oslo_messaging
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 from novajoin.keystone_client import get_session, register_keystoneauth_opts
+from novajoin import config
 from oslo_serialization import jsonutils
 from oslo_log import log as logging
-
-import config
-import cache
-from ipa import IPAClient
 
 
 CONF = config.CONF
@@ -57,7 +56,6 @@ class NotificationEndpoint(object):
                    '^floatingip.update.end')
 
     def __init__(self):
-        self.uuidcache = cache.Cache()
         self.ipaclient = IPAClient()
 
     def _generate_hostname(self, hostname):
@@ -88,20 +86,20 @@ class NotificationEndpoint(object):
         elif event_type == 'network.floating_ip.associate':
             floating_ip = payload.get('floating_ip')
             LOG.info("Associate floating IP %s" % floating_ip)
-            entry = self.uuidcache.get(payload.get('instance_id'))
-            if entry:
-                data = jsonutils.loads(entry)
-                self.ipaclient.add_ip(data.get('hostname'), floating_ip)
+            nova = novaclient()
+            server = nova.servers.get(payload.get('instance_id'))
+            if server:
+                self.ipaclient.add_ip(server.get, floating_ip)
             else:
                 LOG.error("Could not resolve %s into a hostname",
                           payload.get('instance_id'))
         elif event_type == 'network.floating_ip.disassociate':
             floating_ip = payload.get('floating_ip')
             LOG.info("Disassociate floating IP %s" % floating_ip)
-            entry = self.uuidcache.get(payload.get('instance_id'))
-            if entry:
-                data = jsonutils.loads(entry)
-                self.ipaclient.remove_ip(data.get('hostname'), floating_ip)
+            nova = novaclient()
+            server = nova.servers.get(payload.get('instance_id'))
+            if server:
+                self.ipaclient.remove_ip(server.name, floating_ip)
             else:
                 LOG.error("Could not resolve %s into a hostname",
                           payload.get('instance_id'))

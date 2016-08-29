@@ -19,7 +19,6 @@ from oslo_serialization import jsonutils
 from oslo_config import cfg
 from novajoin.ipa import IPAClient
 from novajoin import base
-from novajoin import cache
 from novajoin import exception
 from novajoin.glance import get_default_image_service
 
@@ -104,7 +103,6 @@ class JoinController(Controller):
 
     def __init__(self):
         super(JoinController, self).__init__(None)
-        self.uuidcache = cache.Cache()
 
     @response(200)
     def create(self, req, body=None):
@@ -122,13 +120,7 @@ class JoinController(Controller):
         enroll = metadata.get('ipa_enroll', '')
 
         if enroll.lower() != 'true':
-            LOG.debug('IPA enrollment not requested')
-            return {}
-
-        if instance_id:
-            data = self.uuidcache.get(instance_id)
-            if data:
-                return jsonutils.loads(data)
+            LOG.debug('IPA enrollment not requested in instance creation')
 
         context = req.environ.get('novajoin.context')
         image_service = get_default_image_service()
@@ -143,6 +135,17 @@ class JoinController(Controller):
             LOG.error('Failed to get image, proceeding anyway: %s', e)
         else:
             image_metadata = image.get('properties', {})
+
+        # Check the image metadata to see if enrollment was requested
+        if enroll.lower() != 'true':
+            enroll = image_metadata.get('ipa_enroll', '')
+            if enroll.lower() != 'true':
+                LOG.debug('IPA enrollment not requested in image')
+                return {}
+            else:
+                LOG.debug('IPA enrollment requested in image')
+        else:
+            LOG.debug('IPA enrollment requested as property')
 
         data = {}
 
@@ -161,7 +164,6 @@ class JoinController(Controller):
 
         if instance_id:
             try:
-                self.uuidcache.add(instance_id, jsonutils.dumps(data))
                 ipaclient = IPAClient()
                 ipaclient.add_host(data['hostname'], ipaotp, metadata,
                                    image_metadata)
