@@ -189,6 +189,8 @@ def install(args):
     logger.info('Importing IPA metadata')
     (stdout, stderr, returncode) = run(
         ['glance',
+         '--os-image-api-version',
+         '2',
          'md-namespace-import',
          '--file',
          '/usr/share/novajoin/freeipa.json'], raiseonerr=False)
