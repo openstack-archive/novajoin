@@ -174,8 +174,38 @@ def install(args):
                'dhcp_domain',
                api.env.domain)
 
+    # Novajoin service
+    config.set('DEFAULT',
+               'vendordata_providers',
+               'StaticJSON, DynamicJSON')
+
+    config.set('DEFAULT',
+               'vendordata_dynamic_targets',
+               'join@http://127.0.0.1:9999/v1/')
+
+    # Notifications
+    config.set('DEFAULT',
+               'notification_topic',
+               'notifications')
+
+    config.set('DEFAULT',
+               'notify_on_state_change',
+               'vm_state')
+
+    try:
+        transport_url = config.get('DEFAULT', 'transport_url')
+    except ConfigParser.NoOptionError:
+        transport_url = None
+
     with open('/etc/nova/nova.conf', 'w') as f:
         config.write(f)
+
+    if transport_url:
+        join_config = ConfigParser()
+        join_config.read(JOINCONF)
+        join_config.set('DEFAULT', 'transport_url', transport_url)
+        with open(JOINCONF, 'w') as f:
+            join_config.write(f)
 
     try:
         user = pwd.getpwnam(args['user'])
