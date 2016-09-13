@@ -26,8 +26,7 @@ class Cache(object):
         self.conn.close()
 
     def _getconn(self):
-#        self.conn = sqlite3.connect('/var/run/nova/novajoin_cache.db')
-        self.conn = sqlite3.connect('/tmp/novajoin_cache.db')
+        self.conn = sqlite3.connect('/var/run/nova/novajoin_cache.db')
 
     def add(self, id, data):
         self._getconn()
