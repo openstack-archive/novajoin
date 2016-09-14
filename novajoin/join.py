@@ -14,6 +14,7 @@
 
 import uuid
 import logging
+import traceback
 import webob.exc
 from oslo_serialization import jsonutils
 from oslo_config import cfg
@@ -105,6 +106,7 @@ class JoinController(Controller):
     def __init__(self):
         super(JoinController, self).__init__(None)
         self.uuidcache = cache.Cache()
+        self.ipaclient = IPAClient()
 
     @response(200)
     def create(self, req, body=None):
@@ -118,6 +120,18 @@ class JoinController(Controller):
         user_data = body.get('user-data')
         hostname = body.get('hostname')
         metadata = body.get('metadata', {})
+
+        if not instance_id:
+            LOG.error('No instance-id in request')
+            raise base.Fault(webob.exc.HTTPBadRequest())
+
+        if not hostname:
+            LOG.error('No hostname in request')
+            raise base.Fault(webob.exc.HTTPBadRequest())
+
+        if not image_id:
+            LOG.error('No hostname in request')
+            raise base.Fault(webob.exc.HTTPBadRequest())
 
         enroll = metadata.get('ipa_enroll', '')
 
@@ -171,11 +185,11 @@ class JoinController(Controller):
 
         if instance_id:
             try:
-                ipaclient = IPAClient()
-                ipaclient.add_host(data['hostname'], ipaotp, metadata,
-                                   image_metadata)
+                self.ipaclient.add_host(data['hostname'], ipaotp, metadata,
+                                        image_metadata)
                 self.uuidcache.add(instance_id, jsonutils.dumps(data))
             except Exception as e:
                 LOG.error('caching or adding host failed %s', e)
+                LOG.error(traceback.format_exc())
 
         return data
