@@ -94,6 +94,14 @@ def install(args):
     if not os.path.exists('/etc/ipa/default.conf'):
         raise ConfigurationError('Must be enrolled in IPA')
 
+    try:
+        os.environ['OS_PASSWORD']
+        os.environ['OS_USERNAME']
+        os.environ['OS_AUTH_URL']
+    except KeyError as e:
+        raise ConfigurationError('%s environment variable not set.'
+                                 % e.message)
+
     api.bootstrap(context='novajoin')
     api.finalize()
 
