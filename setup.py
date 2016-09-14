@@ -18,7 +18,7 @@ from setuptools import setup
 
 setup(
     name='novajoin',
-    version='1.0.2',
+    version='1.0.3',
 
     description='Nova integration to enroll IPA clients',
 
