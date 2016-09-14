@@ -295,15 +295,15 @@ def parse_args():
                                  args['hostname'])
 
     if not args['keystone_auth_uri']:
-        args['keystone_auth_uri'] = user_input("Keysone auth URI", "",
-                                           allow_empty=False)
+        args['keystone_auth_uri'] = user_input("Keystone auth URI", "",
+                                               allow_empty=False)
 
     if not args['keystone_auth_url']:
-        args['keystone_auth_url'] = user_input("Keysone auth URL", "",
-                                           allow_empty=False)
+        args['keystone_auth_url'] = user_input("Keystone auth URL", "",
+                                               allow_empty=False)
 
     if not args['keystone_identity']:
-        args['keystone_identity'] = user_input("Keysone identity URI", "",
+        args['keystone_identity'] = user_input("Keystone identity URI", "",
                                                allow_empty=False)
 
     if not args['nova_password']:
