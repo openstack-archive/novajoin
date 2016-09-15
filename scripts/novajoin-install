@@ -155,7 +155,6 @@ def install(args):
                 'DOMAIN': api.env.domain,  # pylint: disable=no-member
                 'KEYSTONE_AUTH_URI': args['keystone_auth_uri'],
                 'KEYSTONE_AUTH_URL': args['keystone_auth_url'],
-                'KEYSTONE_IDENTITY': args['keystone_identity'],
                 'NOVA_PASSWORD': args['nova_password'],
                 }
 
@@ -260,8 +259,6 @@ def parse_args():
                         help='Keystone auth URI')
     parser.add_argument('--keystone-auth-url', dest='keystone_auth_url',
                         help='Keystone auth URL')
-    parser.add_argument('--keystone-identity', dest='keystone_identity',
-                        help='Keystone identity URI')
     parser.add_argument('--nova-password', dest='nova_password',
                         help='Nova service user password')
 
@@ -300,10 +297,6 @@ def parse_args():
 
     if not args['keystone_auth_url']:
         args['keystone_auth_url'] = user_input("Keystone auth URL", "",
-                                               allow_empty=False)
-
-    if not args['keystone_identity']:
-        args['keystone_identity'] = user_input("Keystone identity URI", "",
                                                allow_empty=False)
 
     if not args['nova_password']:
