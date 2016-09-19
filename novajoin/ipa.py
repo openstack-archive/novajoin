@@ -61,7 +61,7 @@ class IPANovaJoinBase(object):
         """
         if not api.Backend.rpcclient.isconnected():
             self.__get_connection()
-        if not version in kw:
+        if 'version' not in kw:
             kw['version'] = u'2.146'  # IPA v4.2.0 for compatibility
         try:
             result = api.Command[command](*args, **kw)
