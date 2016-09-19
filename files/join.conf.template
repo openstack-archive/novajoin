@@ -11,14 +11,6 @@ service_name = HTTP@$MASTER
 cacert = /etc/ipa/ca.crt
 connect_retries = 1
 
-[keystone_authtoken]
-username = nova
-project_name = service
-auth_type = password
-auth_url = $KEYSTONE_AUTH_URL
-password = $NOVA_PASSWORD
-auth_uri = $KEYSTONE_AUTH_URI
-
 [service_credentials]
 auth_url = $KEYSTONE_AUTH_URL
 auth_type = password

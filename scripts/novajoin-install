@@ -153,7 +153,6 @@ def install(args):
     confopts = {'FQDN': args['hostname'],
                 'MASTER': api.env.server,  # pylint: disable=no-member
                 'DOMAIN': api.env.domain,  # pylint: disable=no-member
-                'KEYSTONE_AUTH_URI': args['keystone_auth_uri'],
                 'KEYSTONE_AUTH_URL': args['keystone_auth_url'],
                 'NOVA_PASSWORD': args['nova_password'],
                 }
@@ -255,8 +254,6 @@ def parse_args():
     parser.add_argument('--password-file', dest='passwordfile',
                         help='path to file containing password for '
                              'the principal')
-    parser.add_argument('--keystone-auth-uri', dest='keystone_auth_uri',
-                        help='Keystone auth URI')
     parser.add_argument('--keystone-auth-url', dest='keystone_auth_url',
                         help='Keystone auth URL')
     parser.add_argument('--nova-password', dest='nova_password',
@@ -290,10 +287,6 @@ def parse_args():
     if len(args['hostname'].split('.')) < 2:
         raise ConfigurationError('Hostname: %s is not a FQDN' %
                                  args['hostname'])
-
-    if not args['keystone_auth_uri']:
-        args['keystone_auth_uri'] = user_input("Keystone auth URI", "",
-                                               allow_empty=False)
 
     if not args['keystone_auth_url']:
         args['keystone_auth_url'] = user_input("Keystone auth URL", "",
