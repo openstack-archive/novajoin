@@ -64,12 +64,12 @@ class IPANovaJoinBase(object):
         if 'version' not in kw:
             kw['version'] = u'2.146'  # IPA v4.2.0 for compatibility
         try:
-            result = api.Command[command](*args, **kw)
+            api.Command[command](*args, **kw)
         except errors.CCacheError:
             LOG.debug("Refresh authentication")
             api.Backend.rpcclient.connect()
             self.__get_connection()
-            result = api.Command[command](*args, **kw)
+            api.Command[command](*args, **kw)
 
     def _ipa_client_configured(self):
         """

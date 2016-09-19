@@ -17,8 +17,6 @@ Simplified Common Auth Middleware from cinder.
 """
 
 
-import os
-
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_middleware import request_id

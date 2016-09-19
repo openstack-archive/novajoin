@@ -142,7 +142,7 @@ class GlanceImageService(object):
         params = self._extract_query_params(kwargs)
         try:
             images = self._client.call(context, 'list', **params)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             _reraise_translated_exception()
         else:
             if images is None:
@@ -204,7 +204,7 @@ class GlanceImageService(object):
         """Returns a dict with image data for the given opaque image id."""
         try:
             image = self._client.call(context, 'get', image_id)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             _reraise_translated_image_exception(image_id)
         else:
             if image is None:

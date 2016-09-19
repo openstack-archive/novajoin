@@ -83,8 +83,7 @@ class JoinException(Exception):
             try:
                 message = self.message % kwargs
 
-            except Exception:
-                exc_info = sys.exc_info()
+            except Exception:  # pylint: disable=broad-except
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
                 LOG.exception('Exception in string format operation')

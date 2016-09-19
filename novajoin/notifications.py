@@ -19,9 +19,8 @@
 
 import sys
 import time
-import json
 
-from ipa import IPAClient
+from novajoin.ipa import IPAClient
 import oslo_messaging
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
@@ -71,7 +70,7 @@ class NotificationEndpoint(object):
 
     def info(self, ctxt, publisher_id, event_type, payload, metadata):
         LOG.debug('notification:')
-        LOG.debug(json.dumps(payload, indent=4))
+        LOG.debug(jsonutils.dumps(payload, indent=4))
 
         LOG.debug("publisher: %s, event: %s, metadata: %s", publisher_id,
                   event_type, metadata)
