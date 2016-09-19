@@ -24,27 +24,23 @@ import sys
 import time
 import copy
 import tempfile
-from subprocess import CalledProcessError
 import getpass
-from string import Template
-from six.moves import input
-from six.moves.configparser import ConfigParser
 from ipapython.ipautil import run, kinit_password, user_input
 from ipalib import api
 from ipalib import errors
+from novajoin.errors import ConfigurationError
+from novajoin import configure_ipa
+from six.moves import input
+from six.moves.configparser import ConfigParser
+from subprocess import CalledProcessError
+from string import Template
 
 
 DATADIR = '/usr/share/novajoin'
 NOVADIR = '/etc/nova'
 IPACONF = '/etc/ipa/default.conf'
+NOVACONF = '/etc/nova/nova.conf'
 JOINCONF = '/etc/join/join.conf'
-KEYTAB = '/etc/join/krb5.keytab'
-
-
-class ConfigurationError(StandardError):
-
-    def __init__(self, message):
-        StandardError.__init__(self, message)
 
 
 LOGFILE = '/var/log/novajoin-install.log'
@@ -91,7 +87,7 @@ def write_from_template(destfile, template, opts):
 def install(args):
     logger.info('Installation initiated')
 
-    if not os.path.exists('/etc/ipa/default.conf'):
+    if not os.path.exists(IPACONF):
         raise ConfigurationError('Must be enrolled in IPA')
 
     try:
@@ -105,48 +101,16 @@ def install(args):
     api.bootstrap(context='novajoin')
     api.finalize()
 
-    ccache_dir = tempfile.mkdtemp(prefix='krbcc')
-
-    ccache_name = os.path.join(ccache_dir, 'ccache')
-    env = {"PATH":
-           "/bin:/sbin:/usr/kerberos/bin:/usr/kerberos/sbin:/usr/bin:/usr/sbin"
-           }
-    env['KRB5CCNAME'] = os.environ['KRB5CCNAME'] = ccache_name
-
-    principal = args['principal']
-    if principal.find('@') == -1:
-        principal = '%s@%s' % (principal, api.env.realm)
+    try:
+        api.Backend.rpcclient.connect()
+    except errors.CCacheError:
+        raise ConfigurationError("No Kerberos credentials")
 
     try:
-        kinit_password(principal, args['password'], ccache_name)
-    except RuntimeError as e:
-        raise ConfigurationError("Kerberos authentication failed: %s" % e)
-
-    api.Backend.rpcclient.connect()
-
-    try:
-        result = api.Command.service_add(u'nova/%s@%s' %
-                                         (args['hostname'], api.env.realm),
-                                         force=True)
-    except errors.DuplicateEntry:
-        pass
-    except Exception as e:
-        raise ConfigurationError(
-            'Failed to add service: %s' % e)
-
-    try:
-        if os.path.exists(KEYTAB):
-            os.unlink(KEYTAB)
-    except OSError as e:
-        raise ConfigurationError(
-            'Could not remove %s: %s' % (KEYTAB, e)
-        )
-
-    run(['ipa-getkeytab',
-         '-s', api.env.server,
-         '-p', 'nova/%s@%s' % (args['hostname'], api.env.realm),
-         '-k', KEYTAB],
-        env=env)
+        user = pwd.getpwnam(args['user'])
+    except KeyError:
+        raise ConfigurationError('User: %s not found on the system' %
+                                 args['user'])
 
     logger.info('Installing default config files')
 
@@ -169,7 +133,7 @@ def install(args):
         shutil.copyfile(source, dst)
 
     config = ConfigParser()
-    config.read('/etc/nova/nova.conf')
+    config.read(NOVACONF)
     config.set('DEFAULT',
                'vendordata_jsonfile_path',
                '/etc/nova/cloud-config.json')
@@ -203,7 +167,7 @@ def install(args):
     except ConfigParser.NoOptionError:
         transport_url = None
 
-    with open('/etc/nova/nova.conf', 'w') as f:
+    with open(NOVACONF, 'w') as f:
         config.write(f)
 
     if transport_url:
@@ -212,15 +176,6 @@ def install(args):
         join_config.set('DEFAULT', 'transport_url', transport_url)
         with open(JOINCONF, 'w') as f:
             join_config.write(f)
-
-    try:
-        user = pwd.getpwnam(args['user'])
-    except KeyError:
-        raise ConfigurationError('User: %s not found on the system' %
-                                 args['user'])
-
-    os.chown(KEYTAB, user.pw_uid, user.pw_gid)
-    os.chmod(KEYTAB, 0o600)
 
     logger.info('Importing IPA metadata')
     (stdout, stderr, returncode) = run(
@@ -234,52 +189,26 @@ def install(args):
         logger.error('Adding IPA metadata failed: %s' % stderr)
 
     logger.info('Creating IPA permissions')
-    (stdout, stderr, returncode) = run(
-        ['/usr/libexec/novajoin-ipa-setup.sh'], raiseonerr=False)
-    if returncode != 0:
-        logger.error('Creating IPA permissions failed')
+
+    novajoin = configure_ipa.NovajoinRole(user=args.get('user'))
+    if not args.get('no_kinit', False):
+        novajoin.kinit(args.get('principal'), args.get('password'))
+    novajoin.configure_ipa()
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Nova join Install Options')
     parser.add_argument('--hostname',
                         help='Machine\'s fully qualified host name')
-    parser.add_argument('--user',
-                        help='User that nova services run as',
-                        default='nova')
-    parser.add_argument('--principal', dest='principal', default='admin',
-                        help='principal to use to setup IPA integration')
-    parser.add_argument('--password', dest='password',
-                        help='password for the principal')
-    parser.add_argument('--password-file', dest='passwordfile',
-                        help='path to file containing password for '
-                             'the principal')
     parser.add_argument('--keystone-auth-url', dest='keystone_auth_url',
                         help='Keystone auth URL')
     parser.add_argument('--nova-password', dest='nova_password',
                         help='Nova service user password')
+    parser = configure_ipa.ipa_options(parser)
 
     args = vars(parser.parse_args())
 
-    if not args['principal']:
-        args['principal'] = user_input("IPA admin user", "admin",
-                                       allow_empty=False)
-
-    if args['passwordfile']:
-        try:
-            with open(args['passwordfile']) as f:
-                args['password'] = f.read()
-        except IOError as e:
-            raise ConfigurationError('Unable to read password file: %s'
-                                     % e)
-    if not args['password']:
-        try:
-            args['password'] = getpass.getpass("Password for %s: " %
-                                               args['principal'])
-        except EOFError:
-            args['password'] = None
-        if not args['password']:
-            raise ConfigurationError('Password must be provided.')
+    configure_ipa.validate_options(args)
 
     if not args['hostname']:
         args['hostname'] = socket.getfqdn()

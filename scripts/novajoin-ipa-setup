@@ -1,0 +1,49 @@
+#!/usr/bin/python
+import argparse
+import logging
+import os
+import sys
+from ipalib import api, errors
+from novajoin import configure_ipa
+from novajoin.errors import ConfigurationError
+
+
+IPACONF = '/etc/ipa/default.conf'
+LOGFILE = '/var/log/novajoin-install.log'
+
+logging.basicConfig()
+logger = logging.getLogger()
+
+
+if __name__ == '__main__':
+    if not os.path.exists(IPACONF):
+        sys.exit('Must be enrolled in IPA')
+
+    api.bootstrap(context='novajoin')
+    api.finalize()
+
+    try:
+        parser = argparse.ArgumentParser(
+            description='Nova join Install Options'
+        )
+        parser = configure_ipa.ipa_options(parser)
+        args = vars(parser.parse_args())
+        configure_ipa.validate_options(args)
+    except ConfigurationError as e:  # pylint: disable=broad-except
+        logger.info(str(e))          # emit message to console
+        logger.debug(e, exc_info=1)  # add backtrace information to logfile
+
+        logger.info('Installation aborted.')
+        logger.info('See log file %s for details' % LOGFILE)
+        sys.exit(1)
+
+    novajoin = configure_ipa.NovajoinRole(user=args.get('user'))
+    if not args.get('no_kinit', False):
+        novajoin.kinit(args.get('principal'), args.get('password'))
+
+    try:
+        api.Backend.rpcclient.connect()
+    except errors.CCacheError:
+        sys.exit("No Kerberos credentials")
+
+    novajoin.configure_ipa()
