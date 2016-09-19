@@ -52,7 +52,7 @@ setup(
                 ('/usr/sbin', ['scripts/novajoin-notify'],),
                 ('/usr/sbin', ['scripts/novajoin-server'],),
                 ('/usr/sbin', ['scripts/novajoin-install'],),
-                ('/usr/libexec', ['scripts/novajoin-ipa-setup.sh']),
+                ('/usr/libexec', ['scripts/novajoin-ipa-setup']),
                 ('/usr/share/man/man1', ['man/novajoin-install.1',
                                          'man/novajoin-notify.1',
                                          'man/novajoin-server.1',
