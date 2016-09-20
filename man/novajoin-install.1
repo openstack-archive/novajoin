@@ -8,6 +8,18 @@ novajoin\-install [\fIOPTION\fR]...
 Configures a machine as a novajoin server. 
 
 The machine must first be configured as an IPA client. It does not need to be running on a nova controller.
+
+The installer configures nova to use the novajoin service as a dynamic metadata provider, configures the novajoin notification and REST services and configures IPA to grant access to a role that allows management of hosts.
+
+There are four ways to provide authentication for the IPA integration:
+
+1. kinit before running the script and use the \-\-no\-kinit option.
+.TP
+2. Set the Kerberos principal with \-\-principal and pass the password on the command-line using \-\-password.
+.TP
+3. Set the Kerberos principal with \-\-principal and pass the password in a file using \-\-password\-file.
+.TP
+4. Let the installer prompt the user for the password.
 .SH "OPTIONS"
 Nova join Install Options
 
@@ -17,17 +29,20 @@ Nova join Install Options
 \fB\-\-hostname\fB \fIHOSTNAME\fR
 Machine's fully qualified host name
 .TP
+\fB\-\-no\-kinit\fR
+Assume the user has already done a kinit (principal and password not required)
+.TP
 \fB\-\-user\fR \fIUSER\fR
 User that nova services run as
 .TP
 \fB\-\-principal\fR \fIPRINCIPAL\fR
-principal to use to setup IPA integration
+Kerberos principal to use to setup IPA integration
 .TP
 \fB\-\-password\fR \fIPASSWORD\fR
-password for the principal
+password for the Kerberos principal
 .TP
 \fB\-\-password\-file\fR \fIPASSWORDFILE\fR
-path to file containing password for the principal
+path to file containing password for the Kerberos principal
 .TP
 \fB\-\-keystone\-auth-url\fR \fIKEYSTONE_AUTH_URL\fR
 Keystone auth URL (ex http://192.168.0.1:5000/v3)
