@@ -98,19 +98,23 @@ def install(args):
         raise ConfigurationError('%s environment variable not set.'
                                  % e.message)
 
-    api.bootstrap(context='novajoin')
-    api.finalize()
-
-    try:
-        api.Backend.rpcclient.connect()
-    except errors.CCacheError:
-        raise ConfigurationError("No Kerberos credentials")
-
     try:
         user = pwd.getpwnam(args['user'])
     except KeyError:
         raise ConfigurationError('User: %s not found on the system' %
                                  args['user'])
+
+    api.bootstrap(context='novajoin')
+    api.finalize()
+
+    novajoin = configure_ipa.NovajoinRole(user=args.get('user'))
+    if not args.get('no_kinit', False):
+        novajoin.kinit(args.get('principal'), args.get('password'))
+
+    try:
+        api.Backend.rpcclient.connect()
+    except errors.CCacheError:
+        raise ConfigurationError("No Kerberos credentials")
 
     logger.info('Installing default config files')
 
@@ -190,9 +194,6 @@ def install(args):
 
     logger.info('Creating IPA permissions')
 
-    novajoin = configure_ipa.NovajoinRole(user=args.get('user'))
-    if not args.get('no_kinit', False):
-        novajoin.kinit(args.get('principal'), args.get('password'))
     novajoin.configure_ipa()
 
 
