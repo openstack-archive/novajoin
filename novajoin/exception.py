@@ -18,8 +18,6 @@
 
 """
 
-import sys
-
 from oslo_log import log as logging
 import six
 import webob.exc

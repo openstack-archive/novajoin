@@ -114,10 +114,10 @@ class JoinController(Controller):
         if not body:
             raise base.Fault(webob.exc.HTTPBadRequest())
 
-        project_id = body.get('project-id')
+        project_id = body.get('project-id')  # pylint: disable=unused-variable
         instance_id = body.get('instance-id')
         image_id = body.get('image-id')
-        user_data = body.get('user-data')
+        user_data = body.get('user-data')  # pylint: disable=unused-variable
         hostname = body.get('hostname')
         metadata = body.get('metadata', {})
 
@@ -188,7 +188,7 @@ class JoinController(Controller):
                 self.ipaclient.add_host(data['hostname'], ipaotp, metadata,
                                         image_metadata)
                 self.uuidcache.add(instance_id, jsonutils.dumps(data))
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 LOG.error('caching or adding host failed %s', e)
                 LOG.error(traceback.format_exc())
 

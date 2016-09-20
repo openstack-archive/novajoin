@@ -643,7 +643,7 @@ class Resource(Application):
                 try:
                     # python 2.x
                     response.headers[hdr] = val.encode('utf-8')
-                except Exception:
+                except Exception:  # pylint: disable=broad-except
                     # python 3.x
                     response.headers[hdr] = six.text_type(val)
 

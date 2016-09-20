@@ -26,8 +26,8 @@ _AUTH = None
 def get_session():
     """Get a service credentials auth session."""
 
-    global _SESSION
-    global _AUTH
+    global _SESSION  # pylint: disable=global-statement
+    global _AUTH  # pylint: disable=global-statement
 
     if not _AUTH:
         _AUTH = ks_loading.load_auth_from_conf_options(cfg.CONF, CFG_GROUP)

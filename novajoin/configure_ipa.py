@@ -41,6 +41,7 @@ class NovajoinRole(object):
                 # assume it is in the IPA domain if it comes back
                 # not fully-qualified
                 fqdn = socket.gethostname()
+                # pylint: disable=no-member
                 fqdn = fqdn + '.' + api.env.domain
             except Exception:  # pylint: disable=broad-except
                 fqdn = ""
@@ -54,6 +55,7 @@ class NovajoinRole(object):
         os.environ['KRB5CCNAME'] = self.ccache_name
 
         if principal.find('@') == -1:
+            # pylint: disable=no-member
             principal = '%s@%s' % (principal, api.env.realm)
 
         try:
@@ -139,7 +141,7 @@ class NovajoinRole(object):
 
         try:
             run(['ipa-getkeytab',
-                 '-s', api.env.server,
+                 '-s', api.env.server,  # pylint: disable=no-member
                  '-p', self.service,
                  '-k', self.keytab])
         finally:

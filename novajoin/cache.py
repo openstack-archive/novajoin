@@ -18,6 +18,8 @@ import sqlite3
 class Cache(object):
 
     def __init__(self):
+        self.conn = None
+
         self._getconn()
 
         self.conn.execute('''CREATE TABLE IF NOT EXISTS cache
@@ -28,27 +30,27 @@ class Cache(object):
     def _getconn(self):
         self.conn = sqlite3.connect('/var/run/nova/novajoin_cache.db')
 
-    def add(self, id, data):
+    def add(self, key, data):
         self._getconn()
-        s = ("INSERT INTO cache (id, data) VALUES (\'{id}\', \'{data}\')"
-             .format(id=id, data=data))
+        s = ("INSERT INTO cache (key, data) VALUES (\'{id}\', \'{data}\')"
+             .format(id=key, data=data))
         self.conn.execute(s)
         self.conn.commit()
         self.conn.close()
 
-    def get(self, id):
+    def get(self, key):
         data = None
         self._getconn()
         cursor = self.conn.execute("SELECT id, data from cache where "
-                                   "id=\'%s\'" % id)
+                                   "id=\'%s\'" % key)
         for row in cursor:
             data = row[1]
         self.conn.close()
         return data
 
-    def delete(self, id):
+    def delete(self, key):
         self._getconn()
-        s = "DELETE FROM cache WHERE id=\'%s\'" % id
+        s = "DELETE FROM cache WHERE id=\'%s\'" % key
         self.conn.execute(s)
         self.conn.commit()
         self.conn.close()

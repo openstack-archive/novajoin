@@ -77,13 +77,13 @@ class NotificationEndpoint(object):
 
         if event_type == 'compute.instance.create.end':
             hostname = self._generate_hostname(payload.get('hostname'))
-            id = payload.get('instance_id')
-            LOG.info("Add new host %s (%s)", id, hostname)
+            instance_id = payload.get('instance_id')
+            LOG.info("Add new host %s (%s)", instance_id, hostname)
         elif event_type == 'compute.instance.delete.end':
             hostname = self._generate_hostname(payload.get('hostname'))
-            id = payload.get('instance_id')
-            LOG.info("Delete host %s (%s)", id, hostname)
-            self.uuidcache.delete(id)
+            instance_id = payload.get('instance_id')
+            LOG.info("Delete host %s (%s)", instance_id, hostname)
+            self.uuidcache.delete(instance_id)
             self.ipaclient.delete_host(hostname, {})
         elif event_type == 'network.floating_ip.associate':
             floating_ip = payload.get('floating_ip')

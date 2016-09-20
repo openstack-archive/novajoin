@@ -17,7 +17,6 @@ import uuid
 
 from ipalib import api
 from ipalib import errors
-from ipalib import rpc
 from ipapython.ipautil import kinit_keytab
 
 from oslo_config import cfg
@@ -48,6 +47,7 @@ class IPANovaJoinBase(object):
                 api.Backend.rpcclient.connect()
             except errors.CCacheError as e:
                 LOG.debug("CCacheError: %s", e)
+                # pylint: disable=no-member
                 kinit_keytab(str('nova/%s@%s' % (api.env.host, api.env.realm)),
                              CONF.keytab,
                              self.ccache)
@@ -82,7 +82,7 @@ class IPANovaJoinBase(object):
 
 class IPAClient(IPANovaJoinBase):
 
-    def add_host(self, hostname, ipaotp, metadata={}, image_metadata={}):
+    def add_host(self, hostname, ipaotp, metadata=None, image_metadata=None):
         """
         If requested in the metadata, add a host to IPA. The assumption
         is that hostname is already fully-qualified.
@@ -125,7 +125,7 @@ class IPAClient(IPANovaJoinBase):
                 errors.DNSNotARecordError):
             pass
 
-    def delete_host(self, hostname, metadata={}):
+    def delete_host(self, hostname, metadata=None):
         """
         Delete a host from IPA and remove all related DNS entries.
         """
@@ -134,6 +134,9 @@ class IPAClient(IPANovaJoinBase):
         if not self._ipa_client_configured():
             LOG.debug('IPA is not configured')
             return
+
+        if metadata is None:
+            metadata = {}
 
         # TODO: lookup instance in nova to get metadata to see if
         #       the host was enrolled. For now assume yes.

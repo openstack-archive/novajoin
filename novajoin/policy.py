@@ -29,7 +29,7 @@ _ENFORCER = None
 
 
 def init():
-    global _ENFORCER
+    global _ENFORCER  # pylint: disable=global-statement
     if not _ENFORCER:
         _ENFORCER = policy.Enforcer(CONF)
 
