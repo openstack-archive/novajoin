@@ -28,11 +28,12 @@ class Cache(object):
         self.conn.close()
 
     def _getconn(self):
-        self.conn = sqlite3.connect('/var/run/nova/novajoin_cache.db')
+        self.conn = sqlite3.connect('/var/run/nova/novajoin_cache.db',
+                                    timeout=20)
 
     def add(self, key, data):
         self._getconn()
-        s = ("INSERT INTO cache (key, data) VALUES (\'{id}\', \'{data}\')"
+        s = ("INSERT INTO cache (id, data) VALUES (\'{id}\', \'{data}\')"
              .format(id=key, data=data))
         self.conn.execute(s)
         self.conn.commit()
