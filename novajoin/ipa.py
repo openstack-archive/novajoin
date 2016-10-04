@@ -45,8 +45,8 @@ class IPANovaJoinBase(object):
         while tries <= self.ntries:
             try:
                 api.Backend.rpcclient.connect()
-            except errors.CCacheError as e:
-                LOG.debug("CCacheError: %s", e)
+            except (errors.CCacheError, errors.TicketExpired) as e:
+                LOG.debug("kinit again: %s", e)
                 # pylint: disable=no-member
                 kinit_keytab(str('nova/%s@%s' % (api.env.host, api.env.realm)),
                              CONF.keytab,
@@ -65,7 +65,7 @@ class IPANovaJoinBase(object):
             kw['version'] = u'2.146'  # IPA v4.2.0 for compatibility
         try:
             api.Command[command](*args, **kw)
-        except errors.CCacheError:
+        except errors.CCacheError, errors.TicketExpired:
             LOG.debug("Refresh authentication")
             api.Backend.rpcclient.connect()
             self.__get_connection()
