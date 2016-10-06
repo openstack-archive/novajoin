@@ -65,9 +65,9 @@ class IPANovaJoinBase(object):
             kw['version'] = u'2.146'  # IPA v4.2.0 for compatibility
         try:
             api.Command[command](*args, **kw)
-        except errors.CCacheError, errors.TicketExpired:
+        except (errors.CCacheError, errors.TicketExpired):
             LOG.debug("Refresh authentication")
-            api.Backend.rpcclient.connect()
+            api.Backend.rpcclient.disconnect()
             self.__get_connection()
             api.Command[command](*args, **kw)
 
