@@ -20,7 +20,6 @@ from oslo_serialization import jsonutils
 from oslo_config import cfg
 from novajoin.ipa import IPAClient
 from novajoin import base
-from novajoin import cache
 from novajoin import exception
 from novajoin.glance import get_default_image_service
 
@@ -105,7 +104,6 @@ class JoinController(Controller):
 
     def __init__(self):
         super(JoinController, self).__init__(None)
-        self.uuidcache = cache.Cache()
         self.ipaclient = IPAClient()
 
     @response(200)
@@ -164,11 +162,6 @@ class JoinController(Controller):
         else:
             LOG.debug('IPA enrollment requested as property')
 
-        if instance_id:
-            data = self.uuidcache.get(instance_id)
-            if data:
-                return jsonutils.loads(data)
-
         data = {}
 
         ipaotp = uuid.uuid4().hex
@@ -188,7 +181,6 @@ class JoinController(Controller):
             try:
                 self.ipaclient.add_host(data['hostname'], ipaotp, metadata,
                                         image_metadata)
-                self.uuidcache.add(instance_id, jsonutils.dumps(data))
             except Exception as e:  # pylint: disable=broad-except
                 LOG.error('caching or adding host failed %s', e)
                 LOG.error(traceback.format_exc())

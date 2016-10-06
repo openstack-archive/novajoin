@@ -26,7 +26,6 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 from novajoin.keystone_client import get_session, register_keystoneauth_opts
 from novajoin import config
-from novajoin import cache
 from oslo_serialization import jsonutils
 from oslo_log import log as logging
 
@@ -57,7 +56,6 @@ class NotificationEndpoint(object):
 
     def __init__(self):
         self.ipaclient = IPAClient()
-        self.uuidcache = cache.Cache()
 
     def _generate_hostname(self, hostname):
         # FIXME: Don't re-calculate the hostname, fetch it from somewhere
@@ -83,7 +81,6 @@ class NotificationEndpoint(object):
             hostname = self._generate_hostname(payload.get('hostname'))
             instance_id = payload.get('instance_id')
             LOG.info("Delete host %s (%s)", instance_id, hostname)
-            self.uuidcache.delete(instance_id)
             self.ipaclient.delete_host(hostname, {})
         elif event_type == 'network.floating_ip.associate':
             floating_ip = payload.get('floating_ip')
