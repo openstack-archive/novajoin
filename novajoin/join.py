@@ -112,6 +112,7 @@ class JoinController(Controller):
     def create(self, req, body=None):
         """Generate the OTP, register it with IPA"""
         if not body:
+            LOG.error('No body in create request')
             raise base.Fault(webob.exc.HTTPBadRequest())
 
         project_id = body.get('project-id')  # pylint: disable=unused-variable
@@ -130,7 +131,7 @@ class JoinController(Controller):
             raise base.Fault(webob.exc.HTTPBadRequest())
 
         if not image_id:
-            LOG.error('No hostname in request')
+            LOG.error('No image-id in request')
             raise base.Fault(webob.exc.HTTPBadRequest())
 
         enroll = metadata.get('ipa_enroll', '')
