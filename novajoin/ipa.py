@@ -86,12 +86,16 @@ class IPAClient(IPANovaJoinBase):
         """
         If requested in the metadata, add a host to IPA. The assumption
         is that hostname is already fully-qualified.
+
+        Because this is triggered by a metadata request, which can happen
+        multiple times, first we try to update the OTP in the host entry
+        and if that fails due to NotFound the host is added.
         """
         LOG.debug('In IPABuildInstance')
 
         if not self._ipa_client_configured():
             LOG.debug('IPA is not configured')
-            return
+            return False
 
         if metadata is None:
             metadata = {}
@@ -119,11 +123,24 @@ class IPAClient(IPANovaJoinBase):
         if location:
             hostargs['nshostlocation'] = location
 
+        modargs = {
+            'userpassword': ipaotp.decode('UTF-8'),
+        }
+
         try:
-            self._call_ipa('host_add', *params, **hostargs)
-        except (errors.DuplicateEntry, errors.ValidationError,
-                errors.DNSNotARecordError):
-            pass
+            self._call_ipa('host_mod', *params, **modargs)
+        except errors.NotFound:
+            try:
+                self._call_ipa('host_add', *params, **hostargs)
+            except (errors.DuplicateEntry, errors.ValidationError,
+                    errors.DNSNotARecordError):
+                pass
+        except errors.ValidationError:
+            # Updating the OTP on an enrolled-host is not allowed
+            # in IPA and really a no-op.
+            return False
+
+        return True
 
     def delete_host(self, hostname, metadata=None):
         """

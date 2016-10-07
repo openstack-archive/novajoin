@@ -179,10 +179,13 @@ class JoinController(Controller):
 
         if instance_id:
             try:
-                self.ipaclient.add_host(data['hostname'], ipaotp, metadata,
-                                        image_metadata)
+                res = self.ipaclient.add_host(data['hostname'], ipaotp,
+                                              metadata, image_metadata)
+                if not res:
+                    # OTP was not added to host, don't return one
+                    del data['ipaotp']
             except Exception as e:  # pylint: disable=broad-except
-                LOG.error('caching or adding host failed %s', e)
+                LOG.error('adding host failed %s', e)
                 LOG.error(traceback.format_exc())
 
         return data
