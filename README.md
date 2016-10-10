@@ -1,8 +1,8 @@
 novajoin Package
 ==================
 
-This Python package provides a vendordata plugin for the OpenStack nova
-metadata service to manage host instantiation in an IPA server.
+This Python package provides a dynamic vendordata plugin for the OpenStack
+nova metadata service to manage host instantiation in an IPA server.
 
 It consists of two services:
 
@@ -13,7 +13,8 @@ The REST service will respond to dynamic requests from the nova metadata
 server. This is used to add hosts into IPA.
 
 The notification listener will handle instance delete requests and remove
-the appropriate host from IPA.
+the appropriate host from IPA as well as floating IP associate and
+disassociate requests and update IPA DNS.
 
 Build
 =====
@@ -37,17 +38,21 @@ Package Requirements
 Beyond those packages normally installed by Openstack, these are also
 required:
 
-python-kerberos
+{free}ipa-python
 
 
 Configuration
 =============
 
+The machine running the novajoin service needs to be enrolled
+as an IPA client.
+
 Run novajoin-install to install and configure the plugin on a
 pre-installed nova server.
 
 nova currently needs to be manually configured to enable the
-novajoin REST service and enable notifications:
+novajoin REST service and enable notifications in
+/etc/nova/nova.conf:
 
 vendordata_providers = StaticJSON, DynamicJSON
 vendordata_dynamic_targets = 'join@http://127.0.0.1:9999/v1/'
@@ -59,13 +64,12 @@ notification_driver = messaging
 notification_topic = notifications
 notify_on_state_change = vm_state
 
-Note that the IPA integration assumes that the IPA CA is in the
-system bundle. If it is not, or python-requests is not configured
-to use the system bundle, then you will get CERTIFICATE_VERIFY_FAILED
-errors.
 
 Pre-requisites
 --------------
+
+Cloud-init 0.7.6+ is required to retreive dynamic metadata when
+config_drive is True.
 
 You will need the IPA admin password, or an account that can
 add privileges, permissions, roles and can retrieve keytabs.
@@ -94,6 +98,7 @@ The installer takes the following options:
 --password: the password for the principal. If this is not set the the
             password is obtained interactively
 --password-file: the file containing the password for the principal.
+
 
 Metadata REST Service Configuration
 ===================================
@@ -133,7 +138,30 @@ $ curl http://169.254.169.254/openstack/2016-10-06/vendor_data2.json
 
 The curl output will include a "join" element in the returned dict.
 Thsi will contain a hostname and ipaotp value. These are used for
-enrollment.
+enrollment with ipa-client-install via:
+
+# ipa-client-install -U -w <ipaotp> --hostname <hostname>
+
+
+Logging
+=======
+
+The REST novajoin-server service logs by default to
+/var/log/novajoin/novajoin-server.log
+
+The notification listener service novajoin-notify logs by default to
+/var/log/novajoin/novajoin-notify.log
+
+A logrotate script for this is:
+
+/var/log/novajoin/*log {
+    weekly
+    rotate 14
+    size 10M
+    missingok
+    compress
+}
+
 
 Design
 ======
@@ -143,7 +171,7 @@ overview of how it fits together.
 
 The OpenStack Newton release added a new type of metadata to the nova
 metadata service: dynamic metadata. This is metadata generated on-the-fly
-and not stored within nova (perhaps for security reasons).
+and not stored within nova (for example for security reasons).
 
 For the case of enrolling a client into IPA using a One-Time Password (OTP)
 the password needs to be generated when the IPA host created and then
@@ -157,24 +185,29 @@ The basic sequence of events is:
    by novajoin.
 3. cloud-init executes the provided script which installs the ipa-client
    package, then executes a script which retrieves the metadata from the
-   nova metadata service. This looks like:
+   nova metadata service[*]. This looks like:
    % curl http://169.254.169.254/openstack/2016-10-06/vendor_data2.json
 4. This request invokes the novajoin dynamic metadata service provided
    by the novajoin package. This is registered in /etc/nova/nova.conf.
-5. If the instance was created with the property ipa_enroll=True then
-   a host in IPA is created and an OTP generated. The OTP and generated
-   FQDN are returned to nova as a python dictionary. The data is returned
-   from the metadata service as JSON. If the glance image has os_distro
-   and os_version set in its metadata then this will be reflected in the
-   IPA host.
+5. If the instance was created with the property ipa_enroll=True or
+   the host image has this property set then a host in IPA is created and
+   an OTP generated. The OTP and generated FQDN are returned to nova as a
+   python dictionary. The data is returned from the metadata service as
+   JSON. If the glance image has os_distro and os_version set in its
+   metadata then this will be reflected in the IPA host.
 6. The script provided to cloud-init pulls out the OTP and FQDN and calls
    ipa-client-install
 
 This results in an IPA-enrolled client with no user interaction.
 
 The novajoin-notify service waits for notifications from nova that an
-instance deletion has been completed. If that instance has the property
-ipa_enroll=True then the host is removed from IPA.
+instance deletion has been completed. If that instance or image has the
+property ipa_enroll=True then the host is removed from IPA.
+
+*In the case of config drive the metadata is retrieved and attached
+to the instance at boot time. cloud-init detects the config drive and
+reads its metadata from there.
+
 
 Origin
 ======
