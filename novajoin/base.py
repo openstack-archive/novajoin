@@ -18,17 +18,18 @@
 import paste.urlmap
 import routes
 import webob.dec
+
 from oslo_config import cfg
-from oslo_context import context
 from oslo_log import log
-from oslo_middleware import request_id
 from oslo_serialization import jsonutils
 from oslo_service import wsgi
 from oslo_utils import excutils
 from oslo_utils import strutils
+
 import six
 import six.moves.urllib.parse as urlparse
 import webob.exc
+
 from novajoin import exception
 
 CONF = cfg.CONF

@@ -15,9 +15,15 @@
 import os
 import uuid
 
-from ipalib import api
-from ipalib import errors
-from ipapython.ipautil import kinit_keytab
+try:
+    from ipalib import api
+    from ipalib import errors
+    from ipapython.ipautil import kinit_keytab
+    ipalib_imported = True
+except ImportError:
+    # ipalib/ipapython are not available in PyPy yet, don't make it
+    # a showstopper for the tests.
+    ipalib_imported = False
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -31,7 +37,12 @@ LOG = logging.getLogger(__name__)
 class IPANovaJoinBase(object):
 
     def __init__(self):
-        self.ntries = CONF.connect_retries
+        try:
+            self.ntries = CONF.connect_retries
+        except cfg.NoSuchOptError:
+            self.ntries = 1
+        if not ipalib_imported:
+            return
         self.ccache = "MEMORY:" + str(uuid.uuid4())
         os.environ['KRB5CCNAME'] = self.ccache
         if self._ipa_client_configured() and not api.isdone('finalize'):
@@ -39,7 +50,7 @@ class IPANovaJoinBase(object):
             api.finalize()
 
     def __get_connection(self):
-        """Make a connection to IPA or raise an error"""
+        """Make a connection to IPA or raise an error."""
         tries = 0
 
         while tries <= self.ntries:
@@ -48,7 +59,8 @@ class IPANovaJoinBase(object):
             except (errors.CCacheError, errors.TicketExpired) as e:
                 LOG.debug("kinit again: %s", e)
                 # pylint: disable=no-member
-                kinit_keytab(str('nova/%s@%s' % (api.env.host, api.env.realm)),
+                kinit_keytab(str('nova/%s@%s' %
+                             (api.env.host, api.env.realm)),
                              CONF.keytab,
                              self.ccache)
                 tries += 1
@@ -56,9 +68,12 @@ class IPANovaJoinBase(object):
                 return
 
     def _call_ipa(self, command, *args, **kw):
-        """Try twice to run the command. One execution may fail if we
+        """Make an IPA call.
+
+           Try twice to run the command. One execution may fail if we
            previously had a connection but the ticket expired.
         """
+
         if not api.Backend.rpcclient.isconnected():
             self.__get_connection()
         if 'version' not in kw:
@@ -72,18 +87,21 @@ class IPANovaJoinBase(object):
             api.Command[command](*args, **kw)
 
     def _ipa_client_configured(self):
+        """Determine if the machine is an enrolled IPA client.
+
+           Return boolean indicating whether this machine is enrolled
+           in IPA. This is a rather weak detection method but better
+           than nothing.
         """
-        Return boolean indicating whether this machine is enrolled
-        in IPA. This is a rather weak detection method but better
-        than nothing.
-        """
+
         return os.path.exists('/etc/ipa/default.conf')
 
 
 class IPAClient(IPANovaJoinBase):
 
     def add_host(self, hostname, ipaotp, metadata=None, image_metadata=None):
-        """
+        """Add a host to IPA.
+
         If requested in the metadata, add a host to IPA. The assumption
         is that hostname is already fully-qualified.
 
@@ -91,6 +109,7 @@ class IPAClient(IPANovaJoinBase):
         multiple times, first we try to update the OTP in the host entry
         and if that fails due to NotFound the host is added.
         """
+
         LOG.debug('In IPABuildInstance')
 
         if not self._ipa_client_configured():
@@ -127,6 +146,9 @@ class IPAClient(IPANovaJoinBase):
             'userpassword': ipaotp.decode('UTF-8'),
         }
 
+        if not ipalib_imported:
+            return True
+
         try:
             self._call_ipa('host_mod', *params, **modargs)
         except errors.NotFound:
@@ -143,9 +165,7 @@ class IPAClient(IPANovaJoinBase):
         return True
 
     def delete_host(self, hostname, metadata=None):
-        """
-        Delete a host from IPA and remove all related DNS entries.
-        """
+        """Delete a host from IPA and remove all related DNS entries."""
         LOG.debug('In IPADeleteInstance')
 
         if not self._ipa_client_configured():
@@ -155,8 +175,8 @@ class IPAClient(IPANovaJoinBase):
         if metadata is None:
             metadata = {}
 
-        # TODO: lookup instance in nova to get metadata to see if
-        #       the host was enrolled. For now assume yes.
+        # TODO(rcrit): lookup instance in nova to get metadata to see if
+        # the host was enrolled. For now assume yes.
 
         params = [hostname]
         kw = {
@@ -168,9 +188,7 @@ class IPAClient(IPANovaJoinBase):
             pass
 
     def add_ip(self, hostname, floating_ip):
-        """
-        Add a floating IP to a given hostname.
-        """
+        """Add a floating IP to a given hostname."""
         LOG.debug('In add_ip')
 
         if not self._ipa_client_configured():
@@ -187,9 +205,7 @@ class IPAClient(IPANovaJoinBase):
             pass
 
     def remove_ip(self, hostname, floating_ip):
-        """
-        Remove a floating IP from a given hostname.
-        """
+        """Remove a floating IP from a given hostname."""
         LOG.debug('In remove_ip')
 
         if not self._ipa_client_configured():

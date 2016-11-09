@@ -18,6 +18,7 @@ import copy
 import inspect
 import itertools
 import random
+import six
 import sys
 import time
 
@@ -26,9 +27,9 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
+
 from novajoin import exception
 from novajoin import keystone_client
-import six
 
 
 CONF = cfg.CONF
@@ -39,12 +40,20 @@ GLANCE_APIVERSION = 2
 
 
 def get_api_servers():
-    """Return iterator of glance api_servers to cycle through the
+    """Return iterator of glance api_servers.
+
+    Return iterator of glance api_servers to cycle through the
     list, looping around to the beginning if necessary.
     """
+
     api_servers = []
 
-    ks = keystone_client.get_client()
+    # Handle case where no credentials are configured
+    try:
+        ks = keystone_client.get_client()
+    except cfg.NoSuchOptError:
+        return []
+
     catalog = keystone_client.get_service_catalog(ks)
 
     image_service = catalog.url_for(service_type='image')

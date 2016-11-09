@@ -12,16 +12,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import uuid
 import logging
 import traceback
+import uuid
 import webob.exc
-from oslo_serialization import jsonutils
+
 from oslo_config import cfg
-from novajoin.ipa import IPAClient
+
 from novajoin import base
 from novajoin import exception
 from novajoin.glance import get_default_image_service
+from novajoin.ipa import IPAClient
 
 
 CONF = cfg.CONF
@@ -108,15 +109,16 @@ class JoinController(Controller):
 
     @response(200)
     def create(self, req, body=None):
-        """Generate the OTP, register it with IPA"""
+        """Generate the OTP, register it with IPA
+
+        Options passed in but as yet-unused are project-id and user-data.
+        """
         if not body:
             LOG.error('No body in create request')
             raise base.Fault(webob.exc.HTTPBadRequest())
 
-        project_id = body.get('project-id')  # pylint: disable=unused-variable
         instance_id = body.get('instance-id')
         image_id = body.get('image-id')
-        user_data = body.get('user-data')  # pylint: disable=unused-variable
         hostname = body.get('hostname')
         metadata = body.get('metadata', {})
 
@@ -168,12 +170,21 @@ class JoinController(Controller):
 
         data['ipaotp'] = ipaotp
         if hostname:
-            if CONF.project_subdomain:
-                # FIXME
-                project = 'foo'
-                hostname = '%s.%s.%s' % (hostname, project, CONF.domain)
+            try:
+                domain = CONF.domain
+            except cfg.NoSuchOptError:
+                domain = 'test'
+
+            try:
+                project_subdomain = CONF.project_subdomain
+            except cfg.NoSuchOptError:
+                hostname = '%s.%s' % (hostname, domain)
             else:
-                hostname = '%s.%s' % (hostname, CONF.domain)
+                if project_subdomain:
+                    hostname = '%s.%s.%s' % (hostname,
+                                             project_subdomain, domain)
+                else:
+                    hostname = '%s.%s' % (hostname, domain)
 
             data['hostname'] = hostname
 

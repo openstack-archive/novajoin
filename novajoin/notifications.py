@@ -20,14 +20,15 @@
 import sys
 import time
 
-from novajoin.ipa import IPAClient
-import oslo_messaging
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
-from novajoin.keystone_client import get_session, register_keystoneauth_opts
 from novajoin import config
-from oslo_serialization import jsonutils
+from novajoin.ipa import IPAClient
+from novajoin.keystone_client import get_session
+from novajoin.keystone_client import register_keystoneauth_opts
 from oslo_log import log as logging
+import oslo_messaging
+from oslo_serialization import jsonutils
 
 
 CONF = config.CONF

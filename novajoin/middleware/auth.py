@@ -24,8 +24,8 @@ from oslo_serialization import jsonutils
 import webob.dec
 import webob.exc
 
-from novajoin import context
 import novajoin.base
+from novajoin import context
 
 
 CONF = cfg.CONF

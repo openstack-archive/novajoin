@@ -1,4 +1,17 @@
 #!/usr/bin/python
+# Copyright 2016 Red Hat, Inc.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
 
 import getpass
 import logging
@@ -7,17 +20,19 @@ import pwd
 import socket
 import sys
 import tempfile
+
 from ipalib import api
 from ipalib import errors
-from ipapython.ipautil import run, kinit_password, user_input
+from ipapython.ipautil import kinit_password
+from ipapython.ipautil import run
+from ipapython.ipautil import user_input
 from novajoin.errors import ConfigurationError
 
 logger = logging.getLogger()
 
 
 class NovajoinRole(object):
-    """
-    One-stop shopping for creating the IPA permissions, privilege and role.
+    """One-stop shopping for creating the IPA permissions, privilege and role.
 
     Assumes that ipalib is imported and initialized and an RPC context
     already exists.
@@ -30,9 +45,7 @@ class NovajoinRole(object):
         self.ccache_name = None
 
     def _get_fqdn(self):
-        """
-        Try to determine the fully-qualfied domain name of this box
-        """
+        """Try to determine the fully-qualfied domain name of this box"""
         fqdn = ""
         try:
             fqdn = socket.getfqdn()
@@ -67,8 +80,7 @@ class NovajoinRole(object):
                 os.environ['KRB5CCNAME'] = current_ccache
 
     def _call_ipa(self, command, args, kw):
-        """
-        Call into the IPA API.
+        """Call into the IPA API.
 
         Duplicates are ignored to be idempotent. Other errors are
         ignored implitly because they are encapsulated in the result

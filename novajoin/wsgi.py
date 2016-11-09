@@ -13,14 +13,14 @@
 #    under the License.
 
 import sys
+
+from novajoin import config
+from novajoin import exception
+from novajoin import keystone_client
 from oslo_concurrency import processutils
+from oslo_log import log
 from oslo_service import service
 from oslo_service import wsgi
-from oslo_log import log
-from novajoin import config
-from novajoin import keystone_client
-
-from novajoin import exception
 
 
 CONF = config.CONF
