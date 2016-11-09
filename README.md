@@ -113,8 +113,6 @@ auth_strategy: The authentication strategy to use
 url: The JSON RPC URL to an IPA server, e.g. https://ipa.host.domain/ipa/json
 keytab: The Kerberos keytab containing the credentails for the user
         nova will use to manage hosts. The default is /etc/krb5.keytab.
-service_name: The service name of the JSON RPC handler. This is normally
-        HTTP@<ipa master>
 domain: The domain to associate with IPA hosts.
 connect_retries: The number of times to attempt to contact the IPA
         server before failing.
