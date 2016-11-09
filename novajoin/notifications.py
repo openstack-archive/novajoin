@@ -126,7 +126,7 @@ class NotificationEndpoint(object):
 
 def main():
     register_keystoneauth_opts(CONF)
-    CONF(sys.argv[1:], project='join', version='1.0.6')
+    CONF(sys.argv[1:], project='join', version='1.0.7')
     logging.setup(CONF, 'join')
 
     transport = oslo_messaging.get_transport(CONF)
