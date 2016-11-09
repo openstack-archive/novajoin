@@ -1,3 +1,0 @@
-include LICENSE README.md scripts/novajoin-install scripts/novajoin-ipa-setup scripts/novajoin-notify scripts/novajoin-server
-recursive-include files *.json *.template *.ini
-recursive-include man *.1
