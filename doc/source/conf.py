@@ -16,7 +16,7 @@ import os
 import sys
 import sphinx_rtd_theme
 import pbr.version
-version_info = pbr.version.VersionInfo('ara')
+version_info = pbr.version.VersionInfo('novajoin')
 
 sys.path.insert(0, os.path.abspath('../..'))
 # -- General configuration ----------------------------------------------------
@@ -38,9 +38,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'ara'
+project = u'novajoin'
 copyright = u'2016, Red Hat'
-author = 'RDO Community'
+author = 'Rob Crittenden'
 
 # The short X.Y version.
 version = version_info.version_string()
