@@ -1,2 +1,6 @@
 build
 tools/lintstack.head.py
+*.pyc
+*.egg-info/
+.tox
+.testrepository
