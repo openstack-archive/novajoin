@@ -13,6 +13,7 @@
 #    under the License.
 
 
+from keystoneauth1 import exceptions as keystone_exception
 from keystoneauth1 import loading as ks_loading
 from keystoneclient.v3 import client as ks_client_v3
 from oslo_config import cfg
@@ -60,3 +61,20 @@ def register_keystoneauth_opts(conf):
             cfg.DeprecatedOpt('os-cacert', group=CFG_GROUP),
             cfg.DeprecatedOpt('os-cacert', group="DEFAULT")]
         })
+
+
+def get_project_name(project_id):
+    """Given a keystone project-id return the name of the project."""
+    # Handle case where no credentials are configured
+    try:
+        ks = get_client()
+    except cfg.NoSuchOptError:
+        return None
+
+    try:
+        data = ks.get('projects/%s' % project_id)
+    except keystone_exception.NotFound:
+        return None
+    else:
+        project_data = data[1].get('project', {})
+        return project_data.get('name')

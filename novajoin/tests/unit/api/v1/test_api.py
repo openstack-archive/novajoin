@@ -43,6 +43,7 @@ class JoinTest(test.TestCase):
     def test_no_instanceid(self):
         body = {"metadata": {"ipa_enroll": "True"},
                 "image-id": "b8c88e01-c820-40f6-b026-00926706e374",
+                "project-id": "74b21a5ed9cf4469950fc1783054fe82",
                 "hostname": "test"}
         req = fakes.HTTPRequest.blank('/v1/')
         req.method = 'POST'
@@ -58,6 +59,7 @@ class JoinTest(test.TestCase):
     def test_no_imageid(self):
         body = {"metadata": {"ipa_enroll": "True"},
                 "instance-id": "e4274dc8-325a-409b-92fd-cfdfdd65ae8b",
+                "project-id": "74b21a5ed9cf4469950fc1783054fe82",
                 "hostname": "test"}
         req = fakes.HTTPRequest.blank('/v1/')
         req.method = 'POST'
@@ -73,7 +75,24 @@ class JoinTest(test.TestCase):
     def test_no_hostname(self):
         body = {"metadata": {"ipa_enroll": "True"},
                 "instance-id": "e4274dc8-325a-409b-92fd-cfdfdd65ae8b",
+                "project-id": "74b21a5ed9cf4469950fc1783054fe82",
                 "image-id": "b8c88e01-c820-40f6-b026-00926706e374"}
+        req = fakes.HTTPRequest.blank('/v1/')
+        req.method = 'POST'
+        req.content_type = "application/json"
+
+        # Not using assertRaises because the exception is wrapped as
+        # a Fault
+        try:
+            self.join_controller.create(req, body)
+        except Fault as fault:
+            assert fault.status_int == 400
+
+    def test_no_project_id(self):
+        body = {"metadata": {"ipa_enroll": "True"},
+                "instance-id": "e4274dc8-325a-409b-92fd-cfdfdd65ae8b",
+                "image-id": "b8c88e01-c820-40f6-b026-00926706e374",
+                "hostname": "test"}
         req = fakes.HTTPRequest.blank('/v1/')
         req.method = 'POST'
         req.content_type = "application/json"
@@ -88,6 +107,7 @@ class JoinTest(test.TestCase):
     def test_request_no_enrollment(self):
         body = {"metadata": {"ipa_enroll": "False"},
                 "instance-id": "e4274dc8-325a-409b-92fd-cfdfdd65ae8b",
+                "project-id": "74b21a5ed9cf4469950fc1783054fe82",
                 "image-id": "b8c88e01-c820-40f6-b026-00926706e374",
                 "hostname": "test"}
         expected = {}
@@ -101,6 +121,7 @@ class JoinTest(test.TestCase):
     def test_request(self):
         body = {"metadata": {"ipa_enroll": "True"},
                 "instance-id": "e4274dc8-325a-409b-92fd-cfdfdd65ae8b",
+                "project-id": "74b21a5ed9cf4469950fc1783054fe82",
                 "image-id": "b8c88e01-c820-40f6-b026-00926706e374",
                 "hostname": "test"}
         req = fakes.HTTPRequest.blank('/v1')

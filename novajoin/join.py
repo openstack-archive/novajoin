@@ -22,6 +22,7 @@ from oslo_config import cfg
 from novajoin import base
 from novajoin import exception
 from novajoin.glance import get_default_image_service
+from novajoin import keystone_client
 from novajoin.ipa import IPAClient
 
 
@@ -111,7 +112,7 @@ class JoinController(Controller):
     def create(self, req, body=None):
         """Generate the OTP, register it with IPA
 
-        Options passed in but as yet-unused are project-id and user-data.
+        Options passed in but as yet-unused are and user-data.
         """
         if not body:
             LOG.error('No body in create request')
@@ -119,6 +120,7 @@ class JoinController(Controller):
 
         instance_id = body.get('instance-id')
         image_id = body.get('image-id')
+        project_id = body.get('project-id')
         hostname = body.get('hostname')
         metadata = body.get('metadata', {})
 
@@ -132,6 +134,10 @@ class JoinController(Controller):
 
         if not image_id:
             LOG.error('No image-id in request')
+            raise base.Fault(webob.exc.HTTPBadRequest())
+
+        if not project_id:
+            LOG.error('No project-id in request')
             raise base.Fault(webob.exc.HTTPBadRequest())
 
         enroll = metadata.get('ipa_enroll', '')
@@ -164,6 +170,8 @@ class JoinController(Controller):
         else:
             LOG.debug('IPA enrollment requested as property')
 
+        project_name = keystone_client.get_project_name(project_id)
+
         data = {}
 
         ipaotp = uuid.uuid4().hex
@@ -181,8 +189,9 @@ class JoinController(Controller):
                 hostname = '%s.%s' % (hostname, domain)
             else:
                 if project_subdomain:
+                    LOG.warn('Project subdomain is experimental')
                     hostname = '%s.%s.%s' % (hostname,
-                                             project_subdomain, domain)
+                                             project_name, domain)
                 else:
                     hostname = '%s.%s' % (hostname, domain)
 
