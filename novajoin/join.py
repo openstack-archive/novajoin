@@ -22,8 +22,8 @@ from oslo_config import cfg
 from novajoin import base
 from novajoin import exception
 from novajoin.glance import get_default_image_service
-from novajoin import keystone_client
 from novajoin.ipa import IPAClient
+from novajoin import keystone_client
 
 
 CONF = cfg.CONF
@@ -108,6 +108,27 @@ class JoinController(Controller):
         super(JoinController, self).__init__(None)
         self.ipaclient = IPAClient()
 
+    def _get_allowed_hostclass(self, project_name):
+        """Get the allowed list of hostclass from configuration."""
+        try:
+            group = CONF[project_name]
+        except cfg.NoSuchOptError:
+            # dynamically add the group into the configuration
+            group = cfg.OptGroup(project_name, 'project options')
+            CONF.register_group(group)
+            CONF.register_opt(cfg.ListOpt('allowed_classes'),
+                              group=project_name)
+        try:
+            allowed_classes = CONF[project_name].allowed_classes
+        except cfg.NoSuchOptError:
+            LOG.error('No allowed_classes config option in [%s]', project_name)
+            return []
+        else:
+            if allowed_classes:
+                return allowed_classes
+            else:
+                return []
+
     @response(200)
     def create(self, req, body=None):
         """Generate the OTP, register it with IPA
@@ -170,7 +191,16 @@ class JoinController(Controller):
         else:
             LOG.debug('IPA enrollment requested as property')
 
-        project_name = keystone_client.get_project_name(project_id)
+        hostclass = metadata.get('ipa_hostclass')
+        if hostclass:
+            project_name = keystone_client.get_project_name(project_id)
+            allowed_hostclass = self._get_allowed_hostclass(project_name)
+            LOG.debug('hostclass %s, allowed_classes %s' %
+                      (hostclass, allowed_hostclass))
+            if hostclass not in allowed_hostclass:
+                msg = "Not allowed to add to hostclass '%s'" % hostclass
+                LOG.error(msg)
+                raise base.Fault(webob.exc.HTTPForbidden(explanation=msg))
 
         data = {}
 
