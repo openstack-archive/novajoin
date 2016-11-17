@@ -221,35 +221,33 @@ class JoinController(Controller):
         ipaotp = uuid.uuid4().hex
 
         data['ipaotp'] = ipaotp
-        if hostname:
-            try:
-                domain = CONF.domain
-            except cfg.NoSuchOptError:
-                domain = 'test'
+        try:
+            domain = CONF.domain
+        except cfg.NoSuchOptError:
+            domain = 'test'
 
-            try:
-                project_subdomain = CONF.project_subdomain
-            except cfg.NoSuchOptError:
-                hostname = '%s.%s' % (hostname, domain)
+        try:
+            project_subdomain = CONF.project_subdomain
+        except cfg.NoSuchOptError:
+            hostname = '%s.%s' % (hostname, domain)
+        else:
+            if project_subdomain:
+                LOG.warn('Project subdomain is experimental')
+                hostname = '%s.%s.%s' % (hostname,
+                                         project_name, domain)
             else:
-                if project_subdomain:
-                    LOG.warn('Project subdomain is experimental')
-                    hostname = '%s.%s.%s' % (hostname,
-                                             project_name, domain)
-                else:
-                    hostname = '%s.%s' % (hostname, domain)
+                hostname = '%s.%s' % (hostname, domain)
 
-            data['hostname'] = hostname
+        data['hostname'] = hostname
 
-        if instance_id:
-            try:
-                res = self.ipaclient.add_host(data['hostname'], ipaotp,
-                                              metadata, image_metadata)
-                if not res:
-                    # OTP was not added to host, don't return one
-                    del data['ipaotp']
-            except Exception as e:  # pylint: disable=broad-except
-                LOG.error('adding host failed %s', e)
-                LOG.error(traceback.format_exc())
+        try:
+            res = self.ipaclient.add_host(data['hostname'], ipaotp,
+                                          metadata, image_metadata)
+            if not res:
+                # OTP was not added to host, don't return one
+                del data['ipaotp']
+        except Exception as e:  # pylint: disable=broad-except
+            LOG.error('adding host failed %s', e)
+            LOG.error(traceback.format_exc())
 
         return data
