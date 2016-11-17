@@ -211,7 +211,8 @@ class JoinController(Controller):
             allowed_hostclass = self._get_allowed_hostclass(project_name)
             LOG.debug('hostclass %s, allowed_classes %s' %
                       (hostclass, allowed_hostclass))
-            if hostclass not in allowed_hostclass:
+            if (hostclass not in allowed_hostclass and
+                    '*' not in allowed_hostclass):
                 msg = "Not allowed to add to hostclass '%s'" % hostclass
                 LOG.error(msg)
                 raise base.Fault(webob.exc.HTTPForbidden(explanation=msg))
