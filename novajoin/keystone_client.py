@@ -78,3 +78,20 @@ def get_project_name(project_id):
     else:
         project_data = data[1].get('project', {})
         return project_data.get('name')
+
+
+def get_user_name(user_id):
+    """Given a keystone user-id return the name of the user."""
+    # Handle case where no credentials are configured
+    try:
+        ks = get_client()
+    except cfg.NoSuchOptError:
+        return None
+
+    try:
+        data = ks.get('users/%s' % user_id)
+    except keystone_exception.NotFound:
+        return None
+    else:
+        user_data = data[1].get('user', {})
+        return user_data.get('name')
