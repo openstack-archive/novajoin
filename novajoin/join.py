@@ -32,10 +32,6 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-def create_version_resource():
-    return base.Resource(VersionsController())
-
-
 def create_join_resource():
     return base.Resource(JoinController())
 
@@ -52,17 +48,6 @@ def response(code):
         func.wsgi_code = code
         return func
     return decorator
-
-
-class Versions(base.APIRouter):
-    """Route versions requests."""
-
-    def _setup_routes(self, mapper, ext_mgr):
-        self.resources['versions'] = create_version_resource()
-        mapper.connect('versions', '/',
-                       controller=self.resources['versions'],
-                       action='all')
-        mapper.redirect('', '/')
 
 
 class Join(base.APIRouter):
@@ -87,20 +72,6 @@ class Controller(object):
             self._view_builder = view_builder
         else:
             self._view_builder = None
-
-
-class VersionsController(Controller):
-
-    def __init__(self):
-        super(VersionsController, self).__init__(None)
-
-    @response(300)
-    def all(self, req, body=None):
-        """Return all known versions."""
-        if body:
-            return {'views': '%s' % body.get('foo', '')}
-
-        return {'views': 'foo'}
 
 
 class JoinController(Controller):
