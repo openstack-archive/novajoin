@@ -105,7 +105,8 @@ def process_launcher():
 def main():
 
     keystone_client.register_keystoneauth_opts(CONF)
-    CONF(sys.argv[1:], project='join', version='1.0.8')
+    CONF(sys.argv[1:], version='1.0.8',
+        default_config_files=config.find_config_files())
     log.setup(CONF, 'join')
     launcher = process_launcher()
     server = WSGIService('join')

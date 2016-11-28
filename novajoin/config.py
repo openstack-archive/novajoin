@@ -12,8 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
+
 from oslo_config import cfg
 from oslo_log import log
+
+from six import moves
 
 
 service_opts = [
@@ -48,6 +52,57 @@ service_opts = [
                default=0,
                help='Number retries when downloading an image from glance'),
 ]
+
+
+def _fixpath(p):
+    """Apply tilde expansion and absolutization to a path."""
+    return os.path.abspath(os.path.expanduser(p))
+
+
+def _search_dirs(dirs, basename, extension=""):
+    """Search a list of directories for a given filename.
+
+    Iterator over the supplied directories, returning the first file
+    found with the supplied name and extension.
+
+    :param dirs: a list of directories
+    :param basename: the filename, for example 'glance-api'
+    :param extension: the file extension, for example '.conf'
+    :returns: the path to a matching file, or None
+    """
+    for d in dirs:
+        path = os.path.join(d, '%s%s' % (basename, extension))
+        if os.path.exists(path):
+            return path
+
+
+def find_config_files():
+    """Return a list of default configuration files.
+
+    This is loosely based on the oslo.config version but makes it more
+    specific to novajoin.
+
+    We look for those config files in the following directories:
+
+      ~/.join/join.conf
+      ~/join.conf
+      /etc/nova/join.conf
+      /etc/join.conf
+      /etc/join/join.conf
+    """
+    cfg_dirs = [
+        _fixpath('~/.join/'),
+        _fixpath('~'),
+        '/etc/nova/',
+        '/etc'
+        '/etc/join/'
+    ]
+
+    config_files = []
+    extension = '.conf'
+    config_files.append(_search_dirs(cfg_dirs, 'join', extension))
+
+    return list(moves.filter(bool, config_files))
 
 
 CONF = cfg.CONF
