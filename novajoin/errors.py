@@ -13,7 +13,7 @@
 #    under the License.
 
 
-class ConfigurationError(StandardError):
+class ConfigurationError(Exception):
 
     def __init__(self, message):
-        StandardError.__init__(self, message)
+        super(Exception, self).__init__(message)
