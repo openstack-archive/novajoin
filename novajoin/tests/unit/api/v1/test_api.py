@@ -23,6 +23,8 @@ from novajoin import test
 from novajoin.tests.unit.api import fakes
 from novajoin.tests.unit import fake_constants as fake
 
+import webob.exc
+
 
 class FakeImageService(object):
     def show(self, context, image_id):
@@ -48,6 +50,8 @@ class JoinTest(test.TestCase):
             self.join_controller.create(req, body)
         except Fault as fault:
             assert fault.status_int == 400
+        else:
+            assert(False)
 
     def test_no_instanceid(self):
         body = {"metadata": {"ipa_enroll": "True"},
@@ -64,6 +68,8 @@ class JoinTest(test.TestCase):
             self.join_controller.create(req, body)
         except Fault as fault:
             assert fault.status_int == 400
+        else:
+            assert(False)
 
     def test_no_imageid(self):
         body = {"metadata": {"ipa_enroll": "True"},
@@ -80,6 +86,8 @@ class JoinTest(test.TestCase):
             self.join_controller.create(req, body)
         except Fault as fault:
             assert fault.status_int == 400
+        else:
+            assert(False)
 
     def test_no_hostname(self):
         body = {"metadata": {"ipa_enroll": "True"},
@@ -96,6 +104,8 @@ class JoinTest(test.TestCase):
             self.join_controller.create(req, body)
         except Fault as fault:
             assert fault.status_int == 400
+        else:
+            assert(False)
 
     def test_no_project_id(self):
         body = {"metadata": {"ipa_enroll": "True"},
@@ -112,6 +122,8 @@ class JoinTest(test.TestCase):
             self.join_controller.create(req, body)
         except Fault as fault:
             assert fault.status_int == 400
+        else:
+            assert(False)
 
     @mock.patch('novajoin.join.get_default_image_service')
     def test_request_no_enrollment(self, mock_get_image):
@@ -128,6 +140,28 @@ class JoinTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         res_dict = self.join_controller.create(req, body)
         self.assertEqual(expected, res_dict)
+
+    @mock.patch('novajoin.join.get_default_image_service')
+    def test_request_invalid_image(self, mock_get_image):
+        mock_get_image.side_effect = Fault(webob.exc.HTTPBadRequest())
+        body = {"metadata": {"ipa_enroll": "False"},
+                "instance-id": fake.INSTANCE_ID,
+                "project-id": fake.PROJECT_ID,
+                "image-id": "invalid",
+                "hostname": "test"}
+        req = fakes.HTTPRequest.blank('/v1')
+        req.method = 'POST'
+        req.content_type = "application/json"
+        req.body = jsonutils.dump_as_bytes(body)
+
+        # Not using assertRaises because the exception is wrapped as
+        # a Fault
+        try:
+            self.join_controller.create(req, body)
+        except Fault as fault:
+            assert fault.status_int == 400
+        else:
+            assert(False)
 
     @mock.patch('novajoin.join.get_instance')
     @mock.patch('novajoin.join.get_default_image_service')
@@ -180,3 +214,5 @@ class JoinTest(test.TestCase):
             self.join_controller.create(req, body)
         except Fault as fault:
             assert fault.status_int == 400
+        else:
+            assert(False)

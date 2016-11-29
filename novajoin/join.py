@@ -143,12 +143,10 @@ class JoinController(Controller):
         image_metadata = {}
         try:
             image = image_service.show(context, image_id)
-        except exception.ImageNotFound:
-            # The image metadata is not a show stopper, proceed
-            # without it.
-            pass
-        except exception.ImageNotAuthorized as e:
-            LOG.error('Failed to get image, proceeding anyway: %s', e)
+        except (exception.ImageNotFound, exception.ImageNotAuthorized) as e:
+            msg = 'Failed to get image: %s' % e
+            LOG.error(msg)
+            raise base.Fault(webob.exc.HTTPBadRequest(explanation=msg))
         else:
             image_metadata = image.get('properties', {})
 
