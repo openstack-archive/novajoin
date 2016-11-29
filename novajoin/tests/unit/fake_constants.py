@@ -14,3 +14,8 @@
 
 PROJECT_ID = '89afd400-b646-4bbc-b12b-c0a4d63e5bd3'
 USER_ID = 'c853ca26-e8ea-4797-8a52-ee124a013d0e'
+INSTANCE_ID = 'e4274dc8-325a-409b-92fd-cfdfdd65ae8b'
+IMAGE_ID = 'b8c88e01-c820-40f6-b026-00926706e374'
+
+# In reality this should be a Server object.
+fake_instance = {'instance_name': 'test', 'id': INSTANCE_ID}

@@ -24,7 +24,7 @@ from novajoin import exception
 from novajoin.glance import get_default_image_service
 from novajoin.ipa import IPAClient
 from novajoin import keystone_client
-from novajoin.nova import NovaClient
+from novajoin.nova import get_instance
 
 
 CONF = cfg.CONF
@@ -165,8 +165,7 @@ class JoinController(Controller):
 
         # Ensure this instance exists in nova and retrieve the
         # name of the user that requested it.
-        novaclient = NovaClient()
-        instance = novaclient.get_instance(instance_id)
+        instance = get_instance(instance_id)
         if instance is None:
             msg = 'No such instance-id, %s' % instance_id
             LOG.error(msg)

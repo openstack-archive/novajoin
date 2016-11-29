@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+
 from oslo_serialization import jsonutils
 from testtools.matchers import MatchesRegex
 
@@ -19,6 +21,13 @@ from novajoin.base import Fault
 from novajoin import join
 from novajoin import test
 from novajoin.tests.unit.api import fakes
+from novajoin.tests.unit import fake_constants as fake
+
+
+class FakeImageService(object):
+    def show(self, context, image_id):
+        """Ok to return nothing, just means no image metadata."""
+        return {}
 
 
 class JoinTest(test.TestCase):
@@ -42,8 +51,8 @@ class JoinTest(test.TestCase):
 
     def test_no_instanceid(self):
         body = {"metadata": {"ipa_enroll": "True"},
-                "image-id": "b8c88e01-c820-40f6-b026-00926706e374",
-                "project-id": "74b21a5ed9cf4469950fc1783054fe82",
+                "image-id": fake.IMAGE_ID,
+                "project-id": fake.PROJECT_ID,
                 "hostname": "test"}
         req = fakes.HTTPRequest.blank('/v1/')
         req.method = 'POST'
@@ -58,8 +67,8 @@ class JoinTest(test.TestCase):
 
     def test_no_imageid(self):
         body = {"metadata": {"ipa_enroll": "True"},
-                "instance-id": "e4274dc8-325a-409b-92fd-cfdfdd65ae8b",
-                "project-id": "74b21a5ed9cf4469950fc1783054fe82",
+                "instance-id": fake.INSTANCE_ID,
+                "project-id": fake.PROJECT_ID,
                 "hostname": "test"}
         req = fakes.HTTPRequest.blank('/v1/')
         req.method = 'POST'
@@ -74,9 +83,9 @@ class JoinTest(test.TestCase):
 
     def test_no_hostname(self):
         body = {"metadata": {"ipa_enroll": "True"},
-                "instance-id": "e4274dc8-325a-409b-92fd-cfdfdd65ae8b",
-                "project-id": "74b21a5ed9cf4469950fc1783054fe82",
-                "image-id": "b8c88e01-c820-40f6-b026-00926706e374"}
+                "instance-id": fake.INSTANCE_ID,
+                "project-id": fake.PROJECT_ID,
+                "image-id": fake.IMAGE_ID}
         req = fakes.HTTPRequest.blank('/v1/')
         req.method = 'POST'
         req.content_type = "application/json"
@@ -90,8 +99,8 @@ class JoinTest(test.TestCase):
 
     def test_no_project_id(self):
         body = {"metadata": {"ipa_enroll": "True"},
-                "instance-id": "e4274dc8-325a-409b-92fd-cfdfdd65ae8b",
-                "image-id": "b8c88e01-c820-40f6-b026-00926706e374",
+                "instance-id": fake.INSTANCE_ID,
+                "image-id": fake.IMAGE_ID,
                 "hostname": "test"}
         req = fakes.HTTPRequest.blank('/v1/')
         req.method = 'POST'
@@ -104,11 +113,13 @@ class JoinTest(test.TestCase):
         except Fault as fault:
             assert fault.status_int == 400
 
-    def test_request_no_enrollment(self):
+    @mock.patch('novajoin.join.get_default_image_service')
+    def test_request_no_enrollment(self, mock_get_image):
+        mock_get_image.return_value = FakeImageService()
         body = {"metadata": {"ipa_enroll": "False"},
-                "instance-id": "e4274dc8-325a-409b-92fd-cfdfdd65ae8b",
-                "project-id": "74b21a5ed9cf4469950fc1783054fe82",
-                "image-id": "b8c88e01-c820-40f6-b026-00926706e374",
+                "instance-id": fake.INSTANCE_ID,
+                "project-id": fake.PROJECT_ID,
+                "image-id": fake.IMAGE_ID,
                 "hostname": "test"}
         expected = {}
         req = fakes.HTTPRequest.blank('/v1')
@@ -118,11 +129,16 @@ class JoinTest(test.TestCase):
         res_dict = self.join_controller.create(req, body)
         self.assertEqual(expected, res_dict)
 
-    def test_request(self):
+    @mock.patch('novajoin.join.get_instance')
+    @mock.patch('novajoin.join.get_default_image_service')
+    def test_valid_request(self, mock_get_image, mock_get_instance):
+        mock_get_image.return_value = FakeImageService()
+        mock_get_instance.return_value = fake.fake_instance
+
         body = {"metadata": {"ipa_enroll": "True"},
-                "instance-id": "e4274dc8-325a-409b-92fd-cfdfdd65ae8b",
-                "project-id": "74b21a5ed9cf4469950fc1783054fe82",
-                "image-id": "b8c88e01-c820-40f6-b026-00926706e374",
+                "instance-id": fake.INSTANCE_ID,
+                "project-id": fake.PROJECT_ID,
+                "image-id": fake.IMAGE_ID,
                 "hostname": "test"}
         req = fakes.HTTPRequest.blank('/v1')
         req.method = 'POST'
@@ -140,3 +156,27 @@ class JoinTest(test.TestCase):
         # Note that on failures this will generate to stdout a Krb5Error
         # because in all likelihood the keytab cannot be read (and
         # probably doesn't exist. This can be ignored.
+
+    @mock.patch('novajoin.join.get_instance')
+    @mock.patch('novajoin.join.get_default_image_service')
+    def test_invalid_instance_id(self, mock_get_image, mock_get_instance):
+        """Mock the instance to not exist so there is nothing to enroll."""
+        mock_get_image.return_value = FakeImageService()
+        mock_get_instance.return_value = None
+
+        body = {"metadata": {"ipa_enroll": "True"},
+                "instance-id": "invalid",
+                "project-id": fake.PROJECT_ID,
+                "image-id": fake.IMAGE_ID,
+                "hostname": "test"}
+        req = fakes.HTTPRequest.blank('/v1')
+        req.method = 'POST'
+        req.content_type = "application/json"
+        req.body = jsonutils.dump_as_bytes(body)
+
+        # Not using assertRaises because the exception is wrapped as
+        # a Fault
+        try:
+            self.join_controller.create(req, body)
+        except Fault as fault:
+            assert fault.status_int == 400
