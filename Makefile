@@ -6,13 +6,3 @@ clean:
 sdist: clean
 	python setup.py sdist --formats=gztar
 .PHONY: sdist
-
-pep8:
-	pep8 novajoin scripts
-
-lint:
-	pylint -d c,r,i,W0613 -r n -f colorized \
-		--notes= \
-		--ignored-classes=cherrypy,API \
-		--disable=star-args \
-		./novajoin
