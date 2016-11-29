@@ -48,11 +48,7 @@ def get_api_servers():
 
     api_servers = []
 
-    # Handle case where no credentials are configured
-    try:
-        ks = keystone_client.get_client()
-    except cfg.NoSuchOptError:
-        return []
+    ks = keystone_client.get_client()
 
     catalog = keystone_client.get_service_catalog(ks)
 
@@ -96,9 +92,6 @@ class GlanceClient(object):
         """Call a glance client method."""
         if self.client is None:
             self.client = self._glance_client(context)
-
-        if self.client is None:
-            return None
 
         retry_excs = (glanceclient.exc.ServiceUnavailable,
                       glanceclient.exc.InvalidEndpoint,
