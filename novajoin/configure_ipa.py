@@ -38,7 +38,7 @@ class NovajoinRole(object):
     already exists.
     """
 
-    def __init__(self, keytab='/etc/join/krb5.keytab', user='nova'):
+    def __init__(self, keytab='/etc/nova/krb5.keytab', user='nova'):
         self.keytab = keytab
         self.user = user
         self.service = u'nova/%s' % self._get_fqdn()

@@ -40,7 +40,7 @@ DATADIR = '/usr/share/novajoin'
 NOVADIR = '/etc/nova'
 IPACONF = '/etc/ipa/default.conf'
 NOVACONF = '/etc/nova/nova.conf'
-JOINCONF = '/etc/join/join.conf'
+JOINCONF = '/etc/nova/join.conf'
 
 
 LOGFILE = '/var/log/novajoin-install.log'

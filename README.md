@@ -103,7 +103,7 @@ The installer takes the following options:
 Metadata REST Service Configuration
 ===================================
 
-The REST service is configured in /etc/join/join.conf in the DEFAULT
+The REST service is configured in /etc/nova/join.conf in the DEFAULT
 section.  It provides the following options:
 
 join_listen_port: The TCP port to listen on. Defaults to 9999.

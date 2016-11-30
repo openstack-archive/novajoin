@@ -1,10 +1,10 @@
 [DEFAULT]
 join_listen_port = 9999
-api_paste_config = /etc/join/api-paste.ini
+api_paste_config = /etc/nova/join-api-paste.ini
 debug = True
 auth_strategy=keystone
 log_dir=/var/log/novajoin
-keytab = /etc/join/krb5.keytab
+keytab = /etc/nova/krb5.keytab
 url = https://$MASTER/ipa/json
 domain = $DOMAIN
 cacert = /etc/ipa/ca.crt

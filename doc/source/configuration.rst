@@ -1,7 +1,7 @@
 Configuration
 =============
 
-novajoin is configured via /etc/join/join.conf and consists of two
+novajoin is configured via /etc/nova/join.conf and consists of two
 configuration sections, DEFAULT and service_credentials.
 
 DEFAULT

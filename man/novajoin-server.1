@@ -22,7 +22,7 @@ in nova then the IPA host is generated at instance creation time rather
 than when needed.
 
 .SH "CONFIGURATION"
-The service is configured using \fB/etc/join/join.conf\fR. It consists
+The service is configured using \fB/etc/nova/join.conf\fR. It consists
 of two sections: DEFAULT and keystone_authtoken
 
 The DEFAULT section configures novajoin-server and keystone_authtoken
@@ -33,7 +33,7 @@ The DEFAULT section options are:
 \fRjoin_listen_port\fB = \fI9999\fR
 Port the service listens \fIon\fR
 .TP
-\fRapi_paste_config\fB = \fI/etc/join/api-paste.ini\fR
+\fRapi_paste_config\fB = \fI/etc/nova/join-api-paste.ini\fR
 Path to the Paste configuration file
 .TP
 \fRdebug\fB = \fIFalse\fR
@@ -42,7 +42,7 @@ Additional debug logging
 \fRauth_strategy\fB = \fIkeystone\fR
 Authentication strategy to use
 .TP
-\fRkeytab\fB = \fI/etc/join/krb5.keytab\fR
+\fRkeytab\fB = \fI/etc/nova/krb5.keytab\fR
 Keytab used to communicate with the IPA master
 .TP
 \fRurl\fB = \fIhttps://ipa.example.com/ipa/json\fR
