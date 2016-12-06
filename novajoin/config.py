@@ -32,7 +32,7 @@ service_opts = [
                     'https://ipa.host.domain/ipa/json)'),
     cfg.StrOpt('keytab', default='/etc/krb5.keytab',
                help='Kerberos client keytab file'),
-    cfg.StrOpt('domain', default='test',
+    cfg.StrOpt('domain', default=None,
                help='Domain for new hosts'),
     cfg.IntOpt('connect_retries', default=1,
                help='How many times to attempt to retry '

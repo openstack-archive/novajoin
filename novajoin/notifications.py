@@ -26,6 +26,7 @@ from novajoin import config
 from novajoin.ipa import IPAClient
 from novajoin.keystone_client import get_session
 from novajoin.keystone_client import register_keystoneauth_opts
+from novajoin.util import get_domain
 from oslo_log import log as logging
 import oslo_messaging
 from oslo_serialization import jsonutils
@@ -61,10 +62,11 @@ class NotificationEndpoint(object):
     def _generate_hostname(self, hostname):
         # FIXME: Don't re-calculate the hostname, fetch it from somewhere
         project = 'foo'
+        domain = get_domain()
         if CONF.project_subdomain:
-            host = '%s.%s.%s' % (hostname, project, CONF.domain)
+            host = '%s.%s.%s' % (hostname, project, domain)
         else:
-            host = '%s.%s' % (hostname, CONF.domain)
+            host = '%s.%s' % (hostname, domain)
         return host
 
     def info(self, ctxt, publisher_id, event_type, payload, metadata):
