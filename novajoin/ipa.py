@@ -25,6 +25,7 @@ except ImportError:
     # a showstopper for the tests.
     ipalib_imported = False
 
+from novajoin.util import get_domain
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -195,7 +196,7 @@ class IPAClient(IPANovaJoinBase):
             LOG.debug('IPA is not configured')
             return
 
-        params = [{"__dns_name__": CONF.domain + "."},
+        params = [{"__dns_name__": get_domain() + "."},
                   {"__dns_name__": hostname}]
         kw = {'a_part_ip_address': floating_ip}
 
