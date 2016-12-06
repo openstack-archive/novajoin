@@ -119,7 +119,6 @@ def install(args):
     logger.info('Installing default config files')
 
     confopts = {'FQDN': args['hostname'],
-                'MASTER': api.env.server,  # pylint: disable=no-member
                 'DOMAIN': api.env.domain,  # pylint: disable=no-member
                 'KEYSTONE_AUTH_URL': args['keystone_auth_url'],
                 'NOVA_PASSWORD': args['nova_password'],

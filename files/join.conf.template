@@ -5,7 +5,6 @@ debug = True
 auth_strategy=keystone
 log_dir=/var/log/novajoin
 keytab = /etc/nova/krb5.keytab
-url = https://$MASTER/ipa/json
 domain = $DOMAIN
 cacert = /etc/ipa/ca.crt
 connect_retries = 1
