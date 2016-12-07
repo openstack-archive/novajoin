@@ -180,11 +180,12 @@ class JoinTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         res_dict = self.join_controller.create(req, body)
 
-        # Manually check the response dict for an OTP pattern and
-        # what the default hostname should be.
-        self.assertThat(res_dict.get('ipaotp'),
-                        MatchesRegex('^[a-z0-9]{32}'))
-        self.assertEqual(len(res_dict.get('ipaotp', 0)), 32)
+        # There should be no OTP because IPA shouldn't be
+        # configured, but we'll handle both cases.
+        if res_dict.get('ipaotp'):
+            self.assertThat(res_dict.get('ipaotp'),
+                            MatchesRegex('^[a-z0-9]{32}'))
+            self.assertEqual(len(res_dict.get('ipaotp', 0)), 32)
         self.assertEqual(res_dict.get('hostname'), 'test.test')
 
         # Note that on failures this will generate to stdout a Krb5Error
