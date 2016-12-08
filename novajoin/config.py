@@ -27,9 +27,6 @@ service_opts = [
     cfg.PortOpt('join_listen_port',
                 default=9090,
                 help='Port to listen on'),
-    cfg.StrOpt('url', default=None,
-               help='IPA JSON RPC URL (e.g. '
-                    'https://ipa.host.domain/ipa/json)'),
     cfg.StrOpt('keytab', default='/etc/krb5.keytab',
                help='Kerberos client keytab file'),
     cfg.StrOpt('domain', default='test',
