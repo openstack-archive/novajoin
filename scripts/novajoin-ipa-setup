@@ -16,48 +16,93 @@
 import argparse
 import logging
 import os
+import shutil
 import sys
 from ipalib import api, errors
+from ipapython.ipa_log_manager import log_mgr
 from novajoin import configure_ipa
 from novajoin.errors import ConfigurationError
 
 
 IPACONF = '/etc/ipa/default.conf'
-LOGFILE = '/var/log/novajoin-install.log'
 
-logging.basicConfig()
+logging.basicConfig(format='%(message)s')
 logger = logging.getLogger()
 
 
 if __name__ == '__main__':
-    if not os.path.exists(IPACONF):
-        sys.exit('Must be enrolled in IPA')
 
-    api.bootstrap(context='novajoin')
-    api.finalize()
-
+    logger.setLevel(logging.INFO)
     try:
         parser = argparse.ArgumentParser(
-            description='Nova join Install Options'
+            description='novajoin Install Options'
         )
         parser = configure_ipa.ipa_options(parser)
-        args = vars(parser.parse_args())
-        configure_ipa.validate_options(args)
+        opts = parser.parse_args()
+        configure_ipa.validate_options(opts)
     except ConfigurationError as e:  # pylint: disable=broad-except
         logger.info(str(e))          # emit message to console
         logger.debug(e, exc_info=1)  # add backtrace information to logfile
 
         logger.info('Installation aborted.')
-        logger.info('See log file %s for details' % LOGFILE)
         sys.exit(1)
 
-    novajoin = configure_ipa.NovajoinRole(user=args.get('user'))
-    if not args.get('no_kinit', False):
-        novajoin.kinit(args.get('principal'), args.get('password'))
+    if not opts.precreate and not os.path.exists('/etc/ipa/default.conf'):
+        sys.exit('Must be enrolled in IPA or see precreate')
 
+    if opts.debug:
+        logger.setLevel(logging.DEBUG)
+
+    args = {'context': 'novajoin'}
+    if opts.precreate and not os.path.exists('/etc/ipa/default.conf'):
+        args['domain'] = opts.domain
+        args['realm'] = opts.realm
+        args['xmlrpc_uri'] = u'https://%s/ipa/json' % opts.server
+
+    api.bootstrap(**args)
+    api.finalize()
+
+    # suppress the Forwarding messages from ipa
+    console = log_mgr.get_handler('console')
+    console.setLevel(logging.WARN)
+
+    novajoin = configure_ipa.NovajoinRole(user=opts.user,
+                                          hostname=opts.hostname)
+
+    ccache_dir = None
+    if not opts.no_kinit:
+        if opts.precreate and not os.path.exists('/etc/ipa/default.conf'):
+            krb5_conf = novajoin.create_krb5_conf(opts)
+        else:
+            krb5_conf = None
+        try:
+            ccache_dir = novajoin.kinit(opts.principal, opts.password,
+                                        krb5_conf)
+        except ConfigurationError:
+            if krb5_conf:
+                os.remove(krb5_conf)
+
+    nss_db = None
+
+    if opts.precreate and not os.path.exists('/etc/ipa/default.conf'):
+        nss_db = novajoin.create_nssdb(opts.server, opts.realm)
+
+    logging.debug('Connect to IPA backend')
     try:
-        api.Backend.rpcclient.connect()
+        if nss_db:
+            api.Backend.rpcclient.connect(nss_dir=nss_db.secdir)
+        else:
+            api.Backend.rpcclient.connect()
     except errors.CCacheError:
+        if nss_db:
+            nss_db.close()
         sys.exit("No Kerberos credentials")
 
-    novajoin.configure_ipa()
+    novajoin.configure_ipa(opts.precreate, opts.otp_filename)
+
+    if nss_db:
+        nss_db.close()
+    if krb5_conf:
+        os.remove(krb5_conf)
+    if ccache_dir:
+        shutil.rmtree(ccache_dir)
