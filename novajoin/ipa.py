@@ -164,6 +164,14 @@ class IPAClient(IPANovaJoinBase):
 
         return True
 
+    def add_subhost(self, hostname):
+        try:
+            params = [hostname]
+            hostargs = {'force': True}
+            self._call_ipa('host_add', *params, **hostargs)
+        except (errors.ValidationError, errors.DNSNotARecordError):
+            pass
+
     def delete_host(self, hostname, metadata=None):
         """Delete a host from IPA and remove all related DNS entries."""
         LOG.debug('In IPADeleteInstance')
@@ -185,6 +193,29 @@ class IPAClient(IPANovaJoinBase):
         try:
             self._call_ipa('host_del', *params, **kw)
         except errors.NotFound:
+            pass
+
+    def host_exists(self, hostname):
+        params = [hostname]
+        result = self._call_ipa('host_find', *params)
+        return result != None and result['count'] > 0
+
+    def add_service(self, principal):
+        params = [principal]
+        service_args = {'force': True}
+        self._call_ipa('service_add', *params, **service_args)
+
+    def service_exists(self, principal):
+        params = [principal]
+        result = self._call_ipa('service_find', *params)
+        return result != None and result['count'] > 0
+
+    def service_add_host(self, service_principal, host):
+        params = [service_principal]
+        service_args = {'hosts': [host]}
+        try:
+            self._call_ipa('service_add_host', *params, **service_args)
+        except errors.DuplicateEntry:
             pass
 
     def add_ip(self, hostname, floating_ip):
