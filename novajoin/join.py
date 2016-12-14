@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
 import logging
 import traceback
 import uuid
@@ -219,4 +220,30 @@ class JoinController(Controller):
             LOG.error('adding host failed %s', e)
             LOG.error(traceback.format_exc())
 
+        if 'manage_services' in metadata:
+            self.handle_services(data['hostname'],
+                                 metadata.get('manage_services'))
         return data
+
+    def handle_services(self, base_host, services_json):
+        """Make any host/principal assignments passed into metadata."""
+        LOG.debug("In IPAHandleServices")
+
+        services = json.loads(services_json)
+        hosts_found = list()
+        services_found = list()
+
+        for principal in services:
+            principal_host = principal.split('/', 1)[1]
+
+            # add host if not present
+            if principal_host not in hosts_found:
+                self.ipaclient.add_subhost(principal_host)
+                hosts_found.append(principal_host)
+
+            # add service if not present
+            if principal not in services_found:
+                self.ipaclient.add_service(principal)
+                services_found.append(principal)
+
+            self.ipaclient.service_add_host(principal, base_host)

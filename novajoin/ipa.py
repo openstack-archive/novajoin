@@ -79,12 +79,16 @@ class IPANovaJoinBase(object):
         if 'version' not in kw:
             kw['version'] = u'2.146'  # IPA v4.2.0 for compatibility
         try:
-            api.Command[command](*args, **kw)
+            result = api.Command[command](*args, **kw)
+            LOG.debug(result)
+            return result
         except (errors.CCacheError, errors.TicketExpired):
             LOG.debug("Refresh authentication")
             api.Backend.rpcclient.disconnect()
             self.__get_connection()
-            api.Command[command](*args, **kw)
+            result = api.Command[command](*args, **kw)
+            LOG.debug(result)
+            return result
 
     def _ipa_client_configured(self):
         """Determine if the machine is an enrolled IPA client.
@@ -164,6 +168,16 @@ class IPAClient(IPANovaJoinBase):
 
         return True
 
+    def add_subhost(self, hostname):
+        try:
+            LOG.debug('Adding subhost: ' + hostname)
+            params = [hostname]
+            hostargs = {'force': True}
+            self._call_ipa('host_add', *params, **hostargs)
+        except (errors.ValidationError, errors.DuplicateEntry,
+                errors.DNSNotARecordError):
+            pass
+
     def delete_host(self, hostname, metadata=None):
         """Delete a host from IPA and remove all related DNS entries."""
         LOG.debug('In IPADeleteInstance')
@@ -185,6 +199,24 @@ class IPAClient(IPANovaJoinBase):
         try:
             self._call_ipa('host_del', *params, **kw)
         except errors.NotFound:
+            pass
+
+    def add_service(self, principal):
+        LOG.debug('Adding service: ' + principal)
+        params = [principal]
+        service_args = {'force': True}
+        try:
+            self._call_ipa('service_add', *params, **service_args)
+        except errors.DuplicateEntry:
+            pass
+
+    def service_add_host(self, service_principal, host):
+        LOG.debug('Adding principal ' + service_principal + ' to host ' + host)
+        params = [service_principal]
+        service_args = {'host': (host,)}
+        try:
+            self._call_ipa('service_add_host', *params, **service_args)
+        except errors.DuplicateEntry:
             pass
 
     def add_ip(self, hostname, floating_ip):
