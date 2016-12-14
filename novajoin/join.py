@@ -219,4 +219,31 @@ class JoinController(Controller):
             LOG.error('adding host failed %s', e)
             LOG.error(traceback.format_exc())
 
+        if 'manage_services' in metadata:
+            self.handle_services(data['hostname'],
+                                 metadata.get('manage_services'))
         return data
+
+    def handle_services(self, base_host, services):
+        """Make any host/principal assignments passed into metadata."""
+        LOG.debug("In IPAHandleServices")
+
+        hosts_found = list()
+        services_found = list()
+
+        for principal in services:
+            principal_host = principal.split('/', 1)[1]
+
+            # add host if not present
+            if principal_host not in hosts_found:
+                if not self.ipaclient.host_exists(principal_host):
+                    self.ipaclient.add_host(principal_host)
+                hosts_found.append(principal_host)
+
+            # add service if not present
+            if principal not in services_found:
+                if not self.ipaclient.service_exists(principal):
+                    self.ipaclient.add_service(principal)
+                services_found.append(principal)
+
+            self.ipaclient.service_add_host(principal, base_host)
