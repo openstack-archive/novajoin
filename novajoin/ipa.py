@@ -79,12 +79,12 @@ class IPANovaJoinBase(object):
         if 'version' not in kw:
             kw['version'] = u'2.146'  # IPA v4.2.0 for compatibility
         try:
-            api.Command[command](*args, **kw)
+            return api.Command[command](*args, **kw)
         except (errors.CCacheError, errors.TicketExpired):
             LOG.debug("Refresh authentication")
             api.Backend.rpcclient.disconnect()
             self.__get_connection()
-            api.Command[command](*args, **kw)
+            return api.Command[command](*args, **kw)
 
     def _ipa_client_configured(self):
         """Determine if the machine is an enrolled IPA client.
