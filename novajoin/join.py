@@ -116,14 +116,14 @@ class JoinController(Controller):
         instance_id = body.get('instance-id')
         image_id = body.get('image-id')
         project_id = body.get('project-id')
-        hostname = body.get('hostname')
+        hostname_short = body.get('hostname')
         metadata = body.get('metadata', {})
 
         if not instance_id:
             LOG.error('No instance-id in request')
             raise base.Fault(webob.exc.HTTPBadRequest())
 
-        if not hostname:
+        if not hostname_short:
             LOG.error('No hostname in request')
             raise base.Fault(webob.exc.HTTPBadRequest())
 
@@ -186,28 +186,15 @@ class JoinController(Controller):
                 msg = "Not allowed to add to hostclass '%s'" % hostclass
                 LOG.error(msg)
                 raise base.Fault(webob.exc.HTTPForbidden(explanation=msg))
+        else:
+            project_name = None
 
         data = {}
 
         ipaotp = uuid.uuid4().hex
 
         data['ipaotp'] = ipaotp
-
-        domain = get_domain()
-
-        try:
-            project_subdomain = CONF.project_subdomain
-        except cfg.NoSuchOptError:
-            hostname = '%s.%s' % (hostname, domain)
-        else:
-            if project_subdomain:
-                LOG.warn('Project subdomain is experimental')
-                hostname = '%s.%s.%s' % (hostname,
-                                         project_name, domain)
-            else:
-                hostname = '%s.%s' % (hostname, domain)
-
-        data['hostname'] = hostname
+        data['hostname'] = self._get_fqdn(hostname_short, project_name)
 
         try:
             res = self.ipaclient.add_host(data['hostname'], ipaotp,
@@ -222,7 +209,22 @@ class JoinController(Controller):
         if 'manage_services' in metadata:
             self.handle_services(data['hostname'],
                                  metadata.get('manage_services'))
+        if 'compact_services' in metadata:
+            self.handle_compact_services(hostname_short,
+                                         metadata.get('compact_services'))
         return data
+
+    def _get_fqdn(self, hostname, project_name=None):
+        domain = get_domain()
+        try:
+            project_subdomain = CONF.project_subdomain
+        except cfg.NoSuchOptError:
+            return '%s.%s' % (hostname, domain)
+        if project_subdomain:
+            LOG.warn('Project subdomain is experimental')
+            return '%s.%s.%s' % (hostname, project_name, domain)
+        else:
+            return '%s.%s' % (hostname, domain)
 
     def handle_services(self, base_host, services_json):
         """Make any host/principal assignments passed into metadata."""
@@ -246,3 +248,62 @@ class JoinController(Controller):
                 services_found.append(principal)
 
             self.ipaclient.service_add_host(principal, base_host)
+
+    def handle_compact_services(self, base_host_short, service_repr_json):
+        """Make any host/principal assignments passed from metadata
+
+        This takes a representation of the services and networks where the
+        services are listening on, and forms appropriate hostnames/service
+        principals based on this information. The representation looks as the
+        following:
+
+            {
+                "service1": [
+                    "network1",
+                    "network2"
+                ],
+                "service2": [
+                    "network2",
+                    "network3"
+                ],
+            }
+
+        This function will then use the short hostname given for the node, and
+        will form the service principals. So, for the example above, the
+        resulting principals would be:
+
+            service1/hostname-short.network1.novajoindomain
+            service1/hostname-short.network2.novajoindomain
+            service2/hostname-short.network2.novajoindomain
+            service3/hostname-short.network2.novajoindomain
+
+        assuming that the hostname given in the body of the request was
+        "hostname-short" and that the domain is called "novajoindomain".
+
+        This attempts to do a more compact representation since the nova
+        metadta entries have a limit of 255 characters.
+        """
+        LOG.debug("In handle compact services")
+
+        service_repr = json.loads(service_repr_json)
+        hosts_found = list()
+        services_found = list()
+        base_host = self._get_fqdn(base_host_short)
+
+        for service_name, net_list in service_repr.items():
+            for network in net_list:
+                host_short = "%s.%s." % (base_host_short, network)
+                principal_host = self._get_fqdn(host_short)
+                principal = "%s/%s" % (service_name, principal_host)
+
+                # add host if not present
+                if principal_host not in hosts_found:
+                    self.ipaclient.add_subhost(principal_host)
+                    hosts_found.append(principal_host)
+
+                # add service if not present
+                if principal not in services_found:
+                    self.ipaclient.add_service(principal)
+                    services_found.append(principal)
+
+                self.ipaclient.service_add_host(principal, base_host)
