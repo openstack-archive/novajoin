@@ -1,0 +1,70 @@
+.TH "novajoin-ipa-setup" "1" "Dec  9 2016" "novajoin" "novajoin Manual Pages"
+.SH "NAME"
+novajoin\-ipa\-setup \- Configure the IPA services for novajoin
+.SH "SYNOPSIS"
+novajoin\-ipa\-setup [\fIOPTION\fR]...
+
+.SH "DESCRIPTION"
+Configures the objects in an IPA server to work with novajoin.
+
+The machine does not necessarily have to be configured as an IPA client when the \-\-precreate option is used.
+
+The installer creates the IPA permissions, privileges and role and service and optionally creates the IPA host entry for the novajoin service. It may also retrieve the service keytab.
+
+.SH "OPTIONS"
+novajoin IPA Install Options
+
+\fB\-h\fR, \fB\-\-help\fR
+          show this help message and exit
+.TP
+\fB\-\-debug\fR
+          Additional logging output
+.TP
+\fB\-\-no\-kinit\fR
+Assume the user has already done a kinit (principal and password not required)
+.TP
+\fB\-\-user\fR \fIUSER\fR
+User that nova services run as
+.TP
+\fB\-\-principal\fR \fIPRINCIPAL\fR
+Kerberos principal to use to setup IPA integration
+.TP
+\fB\-\-password\fR \fIPASSWORD\fR
+password for the Kerberos principal
+.TP
+\fB\-\-password\-file\fR \fIPASSWORDFILE\fR
+path to file containing password for the Kerberos principal
+.TP
+\fB\-\-precreate\fB
+Pre-create entries for another host rather than for this one
+.TP
+\fB\-\-server\fB \fISERVER\fR
+The IPA server to create entries in
+.TP
+\fB\-\-realm\fB \fIREALM\fR
+The IPA realm
+.TP
+\fB\-\-domain\fB \fIDOMAIN\fR
+The IPA domain
+.TP
+\fB\-\-hostname\fB \fIHOSTNAME\fR
+The FQDN of the hostname that will run the novajoin service
+.TP
+\fB\-\-otp\-file\fB \fIFILENAME\fR
+File to write the One-Time Password to rather than stdout
+.SH "PRECREATE VS LOCAL"
+There are two options for this installer:
+
+1. Install using the current host as the server to run novajoin.
+2. Create entries in IPA for another server. This is handy when the server hasn't been instantiated yet.
+
+For the first the machine executing the installer must be enrolled as an IPA client and the values from /etc/ipa/default.conf are used for specifying domain, realm, etc.
+
+The second case is the \-\-precreate case. For this case the server, realm, domain and hostname must all be passed into the script. This is useful if the target host that will run novajoin hasn't been created yet. The output of this script will the a One-Time Password (OTP) that can be passed onto this server and used to enroll. This is helpful for audomation so admin credentials don't need to be sent.
+.SH "EXIT STATUS"
+0 if the installation was successful
+
+1 if an error occurred
+.SH "SEEALSO"
+.BR novajoin\-server(1),
+.BR novajoin\-notify(1)
