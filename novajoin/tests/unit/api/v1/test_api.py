@@ -165,9 +165,12 @@ class JoinTest(test.TestCase):
 
     @mock.patch('novajoin.join.get_instance')
     @mock.patch('novajoin.join.get_default_image_service')
-    def test_valid_request(self, mock_get_image, mock_get_instance):
+    @mock.patch('novajoin.join.get_domain')
+    def test_valid_request(self, mock_get_domain, mock_get_image,
+                           mock_get_instance):
         mock_get_image.return_value = FakeImageService()
         mock_get_instance.return_value = fake.fake_instance
+        mock_get_domain.return_value = "test"
 
         body = {"metadata": {"ipa_enroll": "True"},
                 "instance-id": fake.INSTANCE_ID,

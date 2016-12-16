@@ -25,6 +25,7 @@ from novajoin.glance import get_default_image_service
 from novajoin.ipa import IPAClient
 from novajoin import keystone_client
 from novajoin.nova import get_instance
+from novajoin.util import get_domain
 
 
 CONF = cfg.CONF
@@ -190,10 +191,8 @@ class JoinController(Controller):
         ipaotp = uuid.uuid4().hex
 
         data['ipaotp'] = ipaotp
-        try:
-            domain = CONF.domain
-        except cfg.NoSuchOptError:
-            domain = 'test'
+
+        domain = get_domain()
 
         try:
             project_subdomain = CONF.project_subdomain
