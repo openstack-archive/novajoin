@@ -292,7 +292,7 @@ class JoinController(Controller):
 
         for service_name, net_list in service_repr.items():
             for network in net_list:
-                host_short = "%s.%s." % (base_host_short, network)
+                host_short = "%s.%s" % (base_host_short, network)
                 principal_host = self._get_fqdn(host_short)
                 principal = "%s/%s" % (service_name, principal_host)
 
