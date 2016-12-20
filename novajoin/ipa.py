@@ -49,6 +49,7 @@ class IPANovaJoinBase(object):
         if self._ipa_client_configured() and not api.isdone('finalize'):
             api.bootstrap(context='novajoin')
             api.finalize()
+        self.batch_args = list()
 
     def __get_connection(self):
         """Make a connection to IPA or raise an error."""
@@ -67,6 +68,48 @@ class IPANovaJoinBase(object):
                 tries += 1
             else:
                 return
+
+    def _start_batch_operation(self):
+        """Start a batch operation.
+
+           IPA method calls will be collected in a batch job
+           and submitted to IPA once all the operations have collected
+           by a call to _flush_batch_operation().
+        """
+        self.batch_args = list()
+
+    def _add_batch_operation(self, command, *args, **kw ):
+        """Add an IPA call to the batch operation"""
+        self.batch_args.append({
+            "method": command,
+            "params": [args, kw],
+        })
+
+    def _flush_batch_operation(self):
+        """Make an IPA batch call
+
+           Try twice to run the command. One execution may fail if we
+           previously had a connection but the ticket expired.
+        """
+        LOG.debug("flush_batch_operation")
+        if not self.batch_args:
+            return None
+
+        if not api.Backend.rpcclient.isconnected():
+            self.__get_connection()
+        kw = { 'version': u'2.146' } # IPA v4.2.0 for compatibility
+
+        try:
+            result = api.Command['batch'](*self.batch_args, **kw)
+            LOG.debug(result)
+            return result
+        except (errors.CCacheError, errors.TicketExpired):
+            LOG.debug("Refresh authentication")
+            api.Backend.rpcclient.disconnect()
+            self.__get_connection()
+            result = api.Command['batch'](*self.batch_arhs, **kw)
+            LOG.debug(result)
+            return result
 
     def _call_ipa(self, command, *args, **kw):
         """Make an IPA call.
@@ -170,14 +213,10 @@ class IPAClient(IPANovaJoinBase):
         return True
 
     def add_subhost(self, hostname):
-        try:
-            LOG.debug('Adding subhost: ' + hostname)
-            params = [hostname]
-            hostargs = {'force': True}
-            self._call_ipa('host_add', *params, **hostargs)
-        except (errors.ValidationError, errors.DuplicateEntry,
-                errors.DNSNotARecordError):
-            pass
+        LOG.debug('Adding subhost: ' + hostname)
+        params = [hostname]
+        hostargs = {'force': True}
+        self._add_batch_operation('host_add', *params, **hostargs)
 
     def delete_host(self, hostname, metadata=None):
         """Delete a host from IPA and remove all related DNS entries."""
@@ -206,19 +245,13 @@ class IPAClient(IPANovaJoinBase):
         LOG.debug('Adding service: ' + principal)
         params = [principal]
         service_args = {'force': True}
-        try:
-            self._call_ipa('service_add', *params, **service_args)
-        except errors.DuplicateEntry:
-            pass
+        self._add_batch_operation('service_add', *params, **service_args)
 
     def service_add_host(self, service_principal, host):
         LOG.debug('Adding principal ' + service_principal + ' to host ' + host)
         params = [service_principal]
         service_args = {'host': (host,)}
-        try:
-            self._call_ipa('service_add_host', *params, **service_args)
-        except errors.DuplicateEntry:
-            pass
+        self._add_batch_operation('service_add_host', *params, **service_args)
 
     def add_ip(self, hostname, floating_ip):
         """Add a floating IP to a given hostname."""

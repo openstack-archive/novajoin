@@ -206,6 +206,7 @@ class JoinController(Controller):
             LOG.error('adding host failed %s', e)
             LOG.error(traceback.format_exc())
 
+        self.ipaclient._start_batch_operation()
         # key-per-service
         managed_services = [metadata[key] for key in metadata.keys()
                             if key.startswith('managed_service_')]
@@ -215,6 +216,8 @@ class JoinController(Controller):
         if 'compact_services' in metadata:
             self.handle_compact_services(hostname_short,
                                          metadata.get('compact_services'))
+        self.ipaclient._flush_batch_operation()
+
         return data
 
     def _get_fqdn(self, hostname, project_name=None):
