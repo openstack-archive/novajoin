@@ -206,9 +206,12 @@ class JoinController(Controller):
             LOG.error('adding host failed %s', e)
             LOG.error(traceback.format_exc())
 
-        if 'manage_services' in metadata:
-            self.handle_services(data['hostname'],
-                                 metadata.get('manage_services'))
+        # key-per-service
+        managed_services = [metadata[key] for key in metadata.keys()
+                            if key.startswith('managed_service_')]
+        if managed_services:
+            self.handle_services(data['hostname'], managed_services)
+        # compact json format
         if 'compact_services' in metadata:
             self.handle_compact_services(hostname_short,
                                          metadata.get('compact_services'))
@@ -226,11 +229,10 @@ class JoinController(Controller):
         else:
             return '%s.%s' % (hostname, domain)
 
-    def handle_services(self, base_host, services_json):
+    def handle_services(self, base_host, services):
         """Make any host/principal assignments passed into metadata."""
         LOG.debug("In IPAHandleServices")
 
-        services = json.loads(services_json)
         hosts_found = list()
         services_found = list()
 
