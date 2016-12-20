@@ -1,0 +1,8 @@
+Code-Review+2: Ade Lee <alee@redhat.com>
+Workflow+1: Ade Lee <alee@redhat.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Tue, 20 Dec 2016 14:47:08 +0000
+Reviewed-on: https://review.openstack.org/412884
+Project: openstack/novajoin
+Branch: refs/heads/master
