@@ -206,9 +206,16 @@ class JoinController(Controller):
             LOG.error('adding host failed %s', e)
             LOG.error(traceback.format_exc())
 
+        # Services in a list
         if 'manage_services' in metadata:
             self.handle_services(data['hostname'],
                                  metadata.get('manage_services'))
+        # key-per-service
+        managed_services = [metadata[key] for key in metadata.keys()
+                            if key.startswith('managed_service_')]
+        if managed_services:
+            self.handle_services(data['hostname'], managed_services)
+        # compact json format
         if 'compact_services' in metadata:
             self.handle_compact_services(hostname_short,
                                          metadata.get('compact_services'))
