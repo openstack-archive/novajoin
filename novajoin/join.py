@@ -26,7 +26,7 @@ from novajoin.glance import get_default_image_service
 from novajoin.ipa import IPAClient
 from novajoin import keystone_client
 from novajoin.nova import get_instance
-from novajoin.util import get_domain
+from novajoin.util import get_fqdn
 
 
 CONF = cfg.CONF
@@ -194,7 +194,7 @@ class JoinController(Controller):
         ipaotp = uuid.uuid4().hex
 
         data['ipaotp'] = ipaotp
-        data['hostname'] = self._get_fqdn(hostname_short, project_name)
+        data['hostname'] = get_fqdn(hostname_short, project_name)
 
         try:
             res = self.ipaclient.add_host(data['hostname'], ipaotp,
@@ -219,18 +219,6 @@ class JoinController(Controller):
         self.ipaclient.flush_batch_operation()
 
         return data
-
-    def _get_fqdn(self, hostname, project_name=None):
-        domain = get_domain()
-        try:
-            project_subdomain = CONF.project_subdomain
-        except cfg.NoSuchOptError:
-            return '%s.%s' % (hostname, domain)
-        if project_subdomain:
-            LOG.warn('Project subdomain is experimental')
-            return '%s.%s.%s' % (hostname, project_name, domain)
-        else:
-            return '%s.%s' % (hostname, domain)
 
     def handle_services(self, base_host, services):
         """Make any host/principal assignments passed into metadata."""
@@ -293,12 +281,12 @@ class JoinController(Controller):
         service_repr = json.loads(service_repr_json)
         hosts_found = list()
         services_found = list()
-        base_host = self._get_fqdn(base_host_short)
+        base_host = get_fqdn(base_host_short)
 
         for service_name, net_list in service_repr.items():
             for network in net_list:
                 host_short = "%s.%s" % (base_host_short, network)
-                principal_host = self._get_fqdn(host_short)
+                principal_host = get_fqdn(host_short)
                 principal = "%s/%s" % (service_name, principal_host)
 
                 # add host if not present

@@ -165,7 +165,7 @@ class JoinTest(test.TestCase):
 
     @mock.patch('novajoin.join.get_instance')
     @mock.patch('novajoin.join.get_default_image_service')
-    @mock.patch('novajoin.join.get_domain')
+    @mock.patch('novajoin.util.get_domain')
     def test_valid_request(self, mock_get_domain, mock_get_image,
                            mock_get_instance):
         mock_get_image.return_value = FakeImageService()
