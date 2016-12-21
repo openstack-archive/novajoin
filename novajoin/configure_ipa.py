@@ -206,6 +206,11 @@ class NovajoinRole(object):
                        {'ipapermright': u'write',
                         'type': u'host',
                         'attrs': u'userclass'})
+        self._call_ipa(u'permission_add',
+                       u'Modify service managedBy attribute',
+                       {'ipapermright': u'write',
+                        'extratargetfilter': u'service',
+                        'attrs': u'managedby'})
 
     def _add_privileges(self):
         logging.debug('Add privileges')
@@ -219,6 +224,10 @@ class NovajoinRole(object):
                            u'modify host password',
                            u'modify host userclass',
                            u'modify hosts',
+                           u'modify service managedBy attribute',
+                           u'System: Add krbPrincipalName to a Host',
+                           u'System: Add Services',
+                           u'System: Remove Services',
                            u'System: revoke certificate',
                            u'System: manage host keytab',
                            u'System: write host certificate',
