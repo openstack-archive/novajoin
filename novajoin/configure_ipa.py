@@ -17,6 +17,7 @@ import getpass
 import logging
 import os
 import pwd
+import six
 import socket
 import string
 import sys
@@ -246,9 +247,9 @@ class NovajoinRole(object):
                 fd.write("%s\n" % otp)
         else:
             return otp
-        self._call_ipa(u'host_add', unicode(self.hostname),
+        self._call_ipa(u'host_add', six.text_type(self.hostname),
                        {'description': u'Undercloud host',
-                        'userpassword': unicode(otp),
+                        'userpassword': six.text_type(otp),
                         'force': True})
 
     def _add_service(self):
