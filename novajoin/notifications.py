@@ -17,6 +17,7 @@
 # notification_topic = notifications
 # notify_on_state_change = vm_state
 
+import json
 import sys
 import time
 
@@ -27,6 +28,7 @@ from novajoin.ipa import IPAClient
 from novajoin.keystone_client import get_session
 from novajoin.keystone_client import register_keystoneauth_opts
 from novajoin.util import get_domain
+from novajoin.util import get_fqdn
 from oslo_log import log as logging
 import oslo_messaging
 from oslo_serialization import jsonutils
@@ -81,10 +83,14 @@ class NotificationEndpoint(object):
             instance_id = payload.get('instance_id')
             LOG.info("Add new host %s (%s)", instance_id, hostname)
         elif event_type == 'compute.instance.delete.end':
-            hostname = self._generate_hostname(payload.get('hostname'))
+            hostname_short = payload.get('hostname')
             instance_id = payload.get('instance_id')
+            payload_metadata = payload.get('metadata')
+
+            hostname = self._generate_hostname(hostname_short)
             LOG.info("Delete host %s (%s)", instance_id, hostname)
             self.ipaclient.delete_host(hostname, {})
+            self.delete_subhosts(hostname_short, payload_metadata)
         elif event_type == 'network.floating_ip.associate':
             floating_ip = payload.get('floating_ip')
             LOG.info("Associate floating IP %s" % floating_ip)
@@ -124,6 +130,86 @@ class NotificationEndpoint(object):
                 LOG.error("Expected 1 port, got %d", len(ports))
         else:
             LOG.error("Status update or unknown")
+
+    def delete_subhosts(self, hostname_short, metadata):
+        """Delete subhosts and remove VIPs if possible.
+
+        Servers can have multiple network interfaces, and therefore can
+        have multiple aliases.  Moreover, they can part of a service using
+        a virtual host (VIP).  These aliases are denoted 'subhosts',
+
+        We read the metadata to determine which subhosts to remove.
+
+        The subhosts corresponding to network aliases are specified in the
+        metadata parameter compact_services.  These are specified in a compact
+        JSON representation to avoid the 255 character nova metadata limit.
+        These should all be removed when the server is removed.
+
+        The VIPs should only be removed if the host is the last host managing
+        the service.
+        """
+        if metadata is None:
+            return
+
+        self.handle_compact_services(hostname_short,
+                                     metadata.get('compact_services'))
+        managed_services = [metadata[key] for key in metadata.keys()
+                            if key.startswith('managed_service_')]
+        if managed_services:
+            self.handle_managed_services(managed_services)
+
+    def handle_compact_services(self, host_short, service_repr_json):
+        """Reconstructs and removes subhosts for compact services.
+
+           Data looks like this:
+            {"HTTP":
+                ["internalapi", "ctlplane", "storagemgmt", "storage"],
+             "rabbitmq":
+                ["internalapi", "ctlplane"]
+            }
+
+            In this function, we will remove the subhosts.  We expect the
+            services to be automatically deleted through IPA referential
+            integrity.
+        """
+        LOG.debug("In handle compact services")
+        service_repr = json.loads(service_repr_json)
+        hosts_found = list()
+
+        self.ipaclient.start_batch_operation()
+        for service_name, net_list in service_repr.items():
+            for network in net_list:
+                host = "%s.%s" % (host_short, network)
+                principal_host = get_fqdn(host)
+
+                # remove host
+                if principal_host not in hosts_found:
+                    self.ipaclient.delete_subhost(principal_host)
+                    hosts_found.append(principal_host)
+        self.ipaclient.flush_batch_operation()
+
+    def handle_managed_services(self, services):
+        """Delete any managed services if possible.
+
+           Checks to see if the managed service subhost has no managed hosts
+           associations and if so, deletes the host.
+        """
+        LOG.debug("In handle_managed_services")
+        hosts_deleted = list()
+        services_deleted = list()
+
+        for principal in services:
+            if principal not in services_deleted:
+                if self.ipaclient.service_has_hosts(principal):
+                    continue
+                self.ipaclient.delete_service(principal, batch=False)
+                services_deleted.append(principal)
+
+            principal_host = principal.split('/', 1)[1]
+            if principal_host not in hosts_deleted:
+                if not self.ipaclient.host_has_services(principal_host):
+                    self.ipaclient.delete_subhost(principal_host, batch=False)
+                    hosts_deleted.append(principal_host)
 
 
 def main():

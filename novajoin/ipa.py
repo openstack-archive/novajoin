@@ -175,7 +175,7 @@ class IPAClient(IPANovaJoinBase):
         location = metadata.get('ipa_host_location', '')
         osdistro = image_metadata.get('os_distro', '')
         osver = image_metadata.get('os_version', '')
-#            'description': 'IPA host for %s' % inst.display_description,
+        # 'description': 'IPA host for %s' % inst.display_description,
         hostargs = {
             'description': u'IPA host for OpenStack',
             'userpassword': ipaotp.decode('UTF-8'),
@@ -213,10 +213,34 @@ class IPAClient(IPANovaJoinBase):
         return True
 
     def add_subhost(self, hostname):
+        """Add a subhost to IPA.
+
+        Servers can have multiple network interfaces, and therefore can
+        have multiple aliases.  Moreover, they can part of a service using
+        a virtual host (VIP).  These aliases are denoted 'subhosts',
+        """
         LOG.debug('Adding subhost: ' + hostname)
         params = [hostname]
         hostargs = {'force': True}
         self._add_batch_operation('host_add', *params, **hostargs)
+
+    def delete_subhost(self, hostname, batch=True):
+        """Delete a subhost from IPA.
+
+        Servers can have multiple network interfaces, and therefore can
+        have multiple aliases.  Moreover, they can part of a service using
+        a virtual host (VIP).  These aliases are denoted 'subhosts',
+        """
+        LOG.debug('Deleting subhost: ' + hostname)
+        params = [hostname]
+
+        # If there is no DNS entry, this operation fails
+        kw = {'updatedns': False, }
+
+        if batch:
+            self._add_batch_operation('host_del', *params, **kw)
+        else:
+            return self._call_ipa('host_del', *params, **kw)
 
     def delete_host(self, hostname, metadata=None):
         """Delete a host from IPA and remove all related DNS entries."""
@@ -248,10 +272,39 @@ class IPAClient(IPANovaJoinBase):
         self._add_batch_operation('service_add', *params, **service_args)
 
     def service_add_host(self, service_principal, host):
+        """Add a host to a service.
+
+        In IPA there is a relationship between a host and the services for
+        that host. The host has the right to manage keytabs and SSL
+        certificates for its own services. There are reasons that a host
+        may want to manage services for another host or service:
+        virtualization, load balancing, etc. In order to do this you mark
+        the host or service as being "managed by" another host. For services
+        in IPA this is done using the service-add-host API.
+        """
         LOG.debug('Adding principal ' + service_principal + ' to host ' + host)
         params = [service_principal]
         service_args = {'host': (host,)}
         self._add_batch_operation('service_add_host', *params, **service_args)
+
+    def service_has_hosts(self, service_principal):
+        LOG.debug('Checking if principal ' + service_principal + ' has hosts')
+        # TODO(alee) Fill in implementation here
+        return True
+
+    def host_has_services(self, service_host):
+        LOG.debug('Checking if host ' + service_host + ' has services')
+        # TODO(alee) Fill in implementation here
+        return True
+
+    def delete_service(self, principal, batch=True):
+        LOG.debug('Deleting service: ' + principal)
+        params = [principal]
+        service_args = {'force': True}
+        if batch:
+            self._add_batch_operation('service_del', *params, **service_args)
+        else:
+            return self._call_ipa('service_del', *params, **service_args)
 
     def add_ip(self, hostname, floating_ip):
         """Add a floating IP to a given hostname."""
