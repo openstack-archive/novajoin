@@ -45,3 +45,15 @@ def get_domain():
         return api.env.domain
 
     raise ConfigurationError("Unable to get domain")
+
+def get_fqdn(hostname, project_name=None):
+    domain = get_domain()
+    try:
+        project_subdomain = CONF.project_subdomain
+    except cfg.NoSuchOptError:
+        return '%s.%s' % (hostname, domain)
+    if project_subdomain:
+        LOG.warn('Project subdomain is experimental')
+        return '%s.%s.%s' % (hostname, project_name, domain)
+    else:
+        return '%s.%s' % (hostname, domain)
