@@ -28,9 +28,9 @@ service_opts = [
     cfg.PortOpt('join_listen_port',
                 default=9090,
                 help='Port to listen on'),
-    cfg.StrOpt('keytab', default='/etc/krb5.keytab',
+    cfg.StrOpt('keytab', default='/etc/nova/krb5.keytab',
                help='Kerberos client keytab file'),
-    cfg.StrOpt('domain', default=None,
+    cfg.StrOpt('domain', default='localdomain',
                help='Domain for new hosts'),
     cfg.IntOpt('connect_retries', default=1,
                help='How many times to attempt to retry '
@@ -49,6 +49,8 @@ service_opts = [
     cfg.IntOpt('glance_num_retries',
                default=0,
                help='Number retries when downloading an image from glance'),
+    cfg.StrOpt('auth_strategy', default='keystone',
+               help='Strategy to use for authentication.'),
 ]
 
 
