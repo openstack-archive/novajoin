@@ -63,6 +63,12 @@ def register_keystoneauth_opts(conf):
         })
 
 
+def list_keystoneauth_opts():
+    return [('service_credentials', (
+            ks_loading.get_auth_common_conf_options() +
+            ks_loading.get_auth_plugin_conf_options('password')))]
+
+
 def get_project_name(project_id):
     """Given a keystone project-id return the name of the project."""
     # Handle case where no credentials are configured

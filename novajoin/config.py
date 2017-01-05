@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import itertools
 import os
 
 from oslo_config import cfg
@@ -105,3 +106,12 @@ def find_config_files():
 CONF = cfg.CONF
 CONF.register_opts(service_opts)
 log.register_options(CONF)
+
+
+def list_opts():
+    return [
+        ('DEFAULT',
+            itertools.chain(
+                service_opts,
+            )),
+    ]
