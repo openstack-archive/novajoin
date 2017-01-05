@@ -288,14 +288,37 @@ class IPAClient(IPANovaJoinBase):
         self._add_batch_operation('service_add_host', *params, **service_args)
 
     def service_has_hosts(self, service_principal):
+        """Return True if hosts other than parent manages this service"""
+
+        # Import here instead of globally because it needs to occur after
+        # the IPA API has been finalized.
+        try:
+            from ipalib.plugins.service import split_principal
+        except ImportError:
+            from ipapython.kerberos import (
+                parse_princ_name_and_realm as split_principal)
+
         LOG.debug('Checking if principal ' + service_principal + ' has hosts')
-        # TODO(alee) Fill in implementation here
-        return True
+        params = [service_principal]
+        service_args = {}
+        try:
+            result = self._call_ipa('service_show', *params, **service_args)
+        except errors.NotFound:
+            raise KeyError
+        serviceresult = result['result']
+        (service, hostname, realm) = split_principal(service_principal)
+        for candidate in serviceresult.get('managedby_host', []):
+            if candidate != hostname:
+                return True
+        return False
 
     def host_has_services(self, service_host):
+        """Return True if this host manages any services"""
         LOG.debug('Checking if host ' + service_host + ' has services')
-        # TODO(alee) Fill in implementation here
-        return True
+        params = []
+        service_args = {'man_by_host': service_host}
+        result = self._call_ipa('service_find', *params, **service_args)
+        return result['count'] > 0
 
     def delete_service(self, principal, batch=True):
         LOG.debug('Deleting service: ' + principal)
