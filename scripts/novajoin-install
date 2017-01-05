@@ -31,7 +31,7 @@ from ipalib import errors
 from novajoin.errors import ConfigurationError
 from novajoin import configure_ipa
 from six.moves import input
-from six.moves.configparser import ConfigParser
+from six.moves.configparser import SafeConfigParser, NoOptionError
 from subprocess import CalledProcessError
 from string import Template
 
@@ -74,17 +74,7 @@ def openlogs():
     logger.addHandler(ch)
 
 
-def write_from_template(destfile, template, opts):
-    with open(template) as f:
-        t = Template(f.read())
-    text = t.substitute(**opts)
-    with open(destfile, 'w+') as f:
-        f.write(text)
-    logger.debug(destfile)
-    logger.debug(text)
-
-
-def install(args):
+def install(opts):
     logger.info('Installation initiated')
 
     if not os.path.exists(IPACONF):
@@ -99,17 +89,17 @@ def install(args):
                                  % e.message)
 
     try:
-        user = pwd.getpwnam(args['user'])
+        user = pwd.getpwnam(opts.user)
     except KeyError:
         raise ConfigurationError('User: %s not found on the system' %
-                                 args['user'])
+                                 opts.user)
 
     api.bootstrap(context='novajoin')
     api.finalize()
 
-    novajoin = configure_ipa.NovajoinRole(user=args.get('user'))
-    if not args.get('no_kinit', False):
-        novajoin.kinit(args.get('principal'), args.get('password'))
+    novajoin = configure_ipa.NovajoinRole(user=opts.user)
+    if not opts.no_kinit:
+        novajoin.kinit(opts.principal, opts.password)
 
     try:
         api.Backend.rpcclient.connect()
@@ -118,15 +108,14 @@ def install(args):
 
     logger.info('Installing default config files')
 
-    confopts = {'FQDN': args['hostname'],
-                'DOMAIN': api.env.domain,  # pylint: disable=no-member
-                'KEYSTONE_AUTH_URL': args['keystone_auth_url'],
-                'NOVA_PASSWORD': args['nova_password'],
-                }
+    config = SafeConfigParser()
+    config.read(JOINCONF)
+    config.set('DEFAULT', 'domain', api.env.domain)  # pylint: disable=no-member
+    config.set('service_credentials', 'auth_url', opts.keystone_auth_url)
+    config.set('service_credentials', 'password', opts.nova_password)
 
-    write_from_template(JOINCONF,
-                        os.path.join(DATADIR, 'join.conf.template'),
-                        confopts)
+    with open(JOINCONF, 'w') as f:
+        config.write(f)
 
     FILES = ['cloud-config.json']
     for fn in FILES:
@@ -135,7 +124,7 @@ def install(args):
         logger.info('Installing %s' % dst)
         shutil.copyfile(source, dst)
 
-    config = ConfigParser()
+    config = SafeConfigParser()
     config.read(NOVACONF)
     config.set('DEFAULT',
                'vendordata_jsonfile_path',
@@ -167,14 +156,14 @@ def install(args):
 
     try:
         transport_url = config.get('DEFAULT', 'transport_url')
-    except ConfigParser.NoOptionError:
+    except NoOptionError:
         transport_url = None
 
     with open(NOVACONF, 'w') as f:
         config.write(f)
 
     if transport_url:
-        join_config = ConfigParser()
+        join_config = SafeConfigParser()
         join_config.read(JOINCONF)
         join_config.set('DEFAULT', 'transport_url', transport_url)
         with open(JOINCONF, 'w') as f:
@@ -193,49 +182,40 @@ def install(args):
 
     logger.info('Creating IPA permissions')
 
-    novajoin.configure_ipa()
+    novajoin.configure_ipa(precreate=False)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Nova join Install Options')
-    parser.add_argument('--hostname',
-                        help='Machine\'s fully qualified host name')
     parser.add_argument('--keystone-auth-url', dest='keystone_auth_url',
-                        help='Keystone auth URL')
+                        help='Keystone auth URL', default=None)
     parser.add_argument('--nova-password', dest='nova_password',
-                        help='Nova service user password')
+                        help='Nova service user password', default=None)
     parser = configure_ipa.ipa_options(parser)
 
-    args = vars(parser.parse_args())
+    opts = parser.parse_args()
 
-    configure_ipa.validate_options(args)
+    configure_ipa.validate_options(opts)
 
-    if not args['hostname']:
-        args['hostname'] = socket.getfqdn()
+    if not opts.keystone_auth_url:
+        opts.keystone_auth_url = user_input("Keystone auth URL", "",
+                                            allow_empty=False)
 
-    if len(args['hostname'].split('.')) < 2:
-        raise ConfigurationError('Hostname: %s is not a FQDN' %
-                                 args['hostname'])
-
-    if not args['keystone_auth_url']:
-        args['keystone_auth_url'] = user_input("Keystone auth URL", "",
-                                               allow_empty=False)
-
-    if not args['nova_password']:
+    if not opts.nova_password:
         try:
-            args['nova_password'] = getpass.getpass("nova service Password: ")
+            opts.nova_password = getpass.getpass("nova service Password: ")
         except EOFError:
-            args['nova_password'] = None
-        if not args['nova_password']:
+            opts.nova_password = None
+        if not opts.nova_password:
             raise ConfigurationError('nova service user password required.')
 
     try:
-        pwd.getpwnam(args['user'])
+        pwd.getpwnam(opts.user)
     except KeyError:
         raise ConfigurationError('User: %s not found on the system' %
-                                 args['user'])
+                                 opts.user)
 
-    return args
+    return opts
 
 if __name__ == '__main__':
     opts = []
@@ -247,8 +227,7 @@ if __name__ == '__main__':
         opts = parse_args()
 
         logger.debug('Installation arguments:')
-        for k in sorted(opts.iterkeys()):
-            logger.debug('%s: %s', k, opts[k])
+        logger.debug(opts)
 
         install(opts)
     except Exception as e:  # pylint: disable=broad-except
