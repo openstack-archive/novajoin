@@ -117,18 +117,11 @@ def install(opts):
     with open(JOINCONF, 'w') as f:
         config.write(f)
 
-    FILES = ['cloud-config.json']
-    for fn in FILES:
-        dst = os.path.join(NOVADIR, fn)
-        source = os.path.join(DATADIR, fn)
-        logger.info('Installing %s' % dst)
-        shutil.copyfile(source, dst)
-
     config = SafeConfigParser()
     config.read(NOVACONF)
     config.set('DEFAULT',
                'vendordata_jsonfile_path',
-               '/etc/nova/cloud-config.json')
+               '/etc/nova/cloud-config-novajoin.json')
 
     # set the default domain to the IPA domain. This is added to the
     # instance name to set the hostname.

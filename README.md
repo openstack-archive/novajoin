@@ -58,7 +58,7 @@ vendordata_providers = StaticJSON, DynamicJSON
 vendordata_dynamic_targets = 'join@http://127.0.0.1:9999/v1/'
 vendordata_dynamic_connect_timeout = 5
 vendordata_dynamic_read_timeout = 30
-vendordata_jsonfile_path = /etc/nova/cloud-config.json
+vendordata_jsonfile_path = /etc/nova/cloud-config-novajoin.json
 
 notification_driver = messaging
 notification_topic = notifications
