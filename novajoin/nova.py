@@ -15,6 +15,7 @@
 """Handle communication with Nova."""
 
 from novaclient import client
+from novaclient import exceptions
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -44,8 +45,8 @@ class NovaClient(object):
 
 
 def get_instance(instance_id):
-    novaclient = NovaClient()
+    client = NovaClient()
     try:
-        return novaclient.client.servers.get(instance_id)
-    except novaclient.exceptions.NotFound:
+        return client.client.servers.get(instance_id)
+    except exceptions.NotFound:
         return None
