@@ -151,8 +151,9 @@ class NotificationEndpoint(object):
         if metadata is None:
             return
 
-        self.handle_compact_services(hostname_short,
-                                     metadata.get('compact_services'))
+        if 'compact_services' in metadata:
+            self.handle_compact_services(hostname_short,
+                                         metadata.get('compact_services'))
         managed_services = [metadata[key] for key in metadata.keys()
                             if key.startswith('managed_service_')]
         if managed_services:
