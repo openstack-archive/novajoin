@@ -54,15 +54,15 @@ nova currently needs to be manually configured to enable the
 novajoin REST service and enable notifications in
 /etc/nova/nova.conf:
 
-vendordata_providers = StaticJSON, DynamicJSON
-vendordata_dynamic_targets = 'join@http://127.0.0.1:9999/v1/'
-vendordata_dynamic_connect_timeout = 5
-vendordata_dynamic_read_timeout = 30
-vendordata_jsonfile_path = /etc/nova/cloud-config-novajoin.json
+    vendordata_providers = StaticJSON, DynamicJSON
+    vendordata_dynamic_targets = 'join@http://127.0.0.1:9999/v1/'
+    vendordata_dynamic_connect_timeout = 5
+    vendordata_dynamic_read_timeout = 30
+    vendordata_jsonfile_path = /etc/nova/cloud-config-novajoin.json
 
-notification_driver = messaging
-notification_topic = notifications
-notify_on_state_change = vm_state
+    notification_driver = messaging
+    notification_topic = notifications
+    notify_on_state_change = vm_state
 
 
 Pre-requisites
@@ -90,14 +90,14 @@ The nova-api service will need to be manually restarted.
 
 The installer takes the following options:
 
---hostname: use this value as the FQDN of the server.
---user: user that the nova service runs as. This is needed to
-        set filesystem permissions
---principal: the user used to configure IPA integration: create permissions,
-             get the keytab, etc. Default is the IPA admin account.
---password: the password for the principal. If this is not set the the
-            password is obtained interactively
---password-file: the file containing the password for the principal.
+    --hostname: use this value as the FQDN of the server.
+    --user: user that the nova service runs as. This is needed to
+            set filesystem permissions
+    --principal: the user used to configure IPA integration: create permissions,
+                 get the keytab, etc. Default is the IPA admin account.
+    --password: the password for the principal. If this is not set the the
+                password is obtained interactively
+    --password-file: the file containing the password for the principal.
 
 
 Metadata REST Service Configuration
@@ -106,23 +106,23 @@ Metadata REST Service Configuration
 The REST service is configured in /etc/nova/join.conf in the DEFAULT
 section.  It provides the following options:
 
-join_listen_port: The TCP port to listen on. Defaults to 9999.
-api_paste_config: The paste configuration file to use.
-debug: Enable additional debugging output. Default is False.
-auth_strategy: The authentication strategy to use
-url: The JSON RPC URL to an IPA server, e.g. https://ipa.host.domain/ipa/json
-keytab: The Kerberos keytab containing the credentails for the user
-        nova will use to manage hosts. The default is /etc/krb5.keytab.
-domain: The domain to associate with IPA hosts.
-connect_retries: The number of times to attempt to contact the IPA
-        server before failing.
-project_subdomain: Use the project the instance is created in as the
-        subddomain for the fully-qualified domain name. For example if
-        the project is admin and the domain is example.com and the
-        instance name is test the FQDN will be test.admin.example.com
-normalize_project: A project name can contain values not allowed as a
-        DNS label. This will convert invalid values to a dash (-)
-        dropping leading and trailing dashes.
+    - join_listen_port: The TCP port to listen on. Defaults to 9999.
+    - api_paste_config: The paste configuration file to use.
+    - debug: Enable additional debugging output. Default is False.
+    - auth_strategy: The authentication strategy to use
+    - url: The JSON RPC URL to an IPA server, e.g. https://ipa.host.domain/ipa/json
+    - keytab: The Kerberos keytab containing the credentails for the user
+              nova will use to manage hosts. The default is /etc/krb5.keytab.
+    - domain: The domain to associate with IPA hosts.
+    - connect_retries: The number of times to attempt to contact the IPA
+              server before failing.
+    - project_subdomain: Use the project the instance is created in as the
+              subddomain for the fully-qualified domain name. For example if
+              the project is admin and the domain is example.com and the
+              instance name is test the FQDN will be test.admin.example.com
+    - normalize_project: A project name can contain values not allowed as a
+              DNS label. This will convert invalid values to a dash (-)
+              dropping leading and trailing dashes.
 
 
 Usage
