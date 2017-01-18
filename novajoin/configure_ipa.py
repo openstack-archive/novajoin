@@ -156,7 +156,7 @@ class NovajoinRole(object):
 
         return nss_db
 
-    def kinit(self, principal, password, config=None):
+    def kinit(self, principal, realm, password, config=None):
         ccache_dir = tempfile.mkdtemp(prefix='krbcc')
         self.ccache_name = os.path.join(ccache_dir, 'ccache')
 
@@ -165,7 +165,7 @@ class NovajoinRole(object):
 
         if principal.find('@') == -1:
             # pylint: disable=no-member
-            principal = '%s@%s' % (principal, api.env.realm)
+            principal = '%s@%s' % (principal, realm)
 
         try:
             kinit_password(principal, password, self.ccache_name,
