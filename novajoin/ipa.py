@@ -47,9 +47,30 @@ class IPANovaJoinBase(object):
         self.ccache = "MEMORY:" + str(uuid.uuid4())
         os.environ['KRB5CCNAME'] = self.ccache
         if self._ipa_client_configured() and not api.isdone('finalize'):
+            (hostname, realm) = self.__get_host_and_realm()
+            kinit_keytab(str('nova/%s@%s' % (hostname, realm)),
+                         CONF.keytab, self.ccache)
             api.bootstrap(context='novajoin')
             api.finalize()
         self.batch_args = list()
+
+    def __get_host_and_realm(self):
+        """Return the hostname and IPA realm name.
+
+           IPA 4.4 introduced the requirement that the schema be
+           fetched when calling finalize(). This is really only used by
+           the ipa command-line tool but for now it is baked in.
+           So we have to get a TGT first but need the hostname and
+           realm. For now directly read the IPA config file which is
+           in INI format and pull those two values out and return as
+           a tuple.
+        """
+        config = SafeConfigParser()
+        config.read('/etc/ipa/default.conf')
+        hostname = config.get('global', 'host')
+        realm = config.get('global', 'realm')
+ 
+        return (hostname, realm)
 
     def __get_connection(self):
         """Make a connection to IPA or raise an error."""

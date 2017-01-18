@@ -65,9 +65,6 @@ if __name__ == '__main__':
     precreate_opts_specified = (opts.precreate and opts.domain
                                 and opts.realm and opts.server)
 
-    api.bootstrap(**args)
-    api.finalize()
-
     # suppress the Forwarding messages from ipa
     console = log_mgr.get_handler('console')
     console.setLevel(logging.WARN)
@@ -79,11 +76,12 @@ if __name__ == '__main__':
     if not opts.no_kinit:
         if precreate_opts_specified:
             krb5_conf = novajoin.create_krb5_conf(opts)
+            os.environ['KRB5_CONFIG'] = krb5_conf
         else:
             krb5_conf = None
         try:
-            ccache_dir = novajoin.kinit(opts.principal, opts.password,
-                                        krb5_conf)
+            ccache_dir = novajoin.kinit(opts.principal, opts.realm,
+                                        opts.password, krb5_conf)
         except ConfigurationError:
             if krb5_conf:
                 os.remove(krb5_conf)
@@ -92,6 +90,9 @@ if __name__ == '__main__':
 
     if precreate_opts_specified:
         nss_db = novajoin.create_nssdb(opts.server, opts.realm)
+    args['nss_dir'] = unicode(nss_db.secdir)
+    api.bootstrap(**args)
+    api.finalize()
 
     logging.debug('Connect to IPA backend')
     try:
