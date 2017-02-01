@@ -1,0 +1,7 @@
+Currently this test needs to be executed against a live installation with a copy
+of the novajoin keytab in /tmp/test.keytab.
+
+A new krb5.conf is included which will force the default ticket lifetime to 1 minute
+and time.sleep(60) is used to ensure an expiration will happen.
+
+I execute it as: nosetests -v novajoin/tests/integration/test_ipa.py

@@ -48,14 +48,14 @@ class IPANovaJoinBase(object):
         self.ccache = "MEMORY:" + str(uuid.uuid4())
         os.environ['KRB5CCNAME'] = self.ccache
         if self._ipa_client_configured() and not api.isdone('finalize'):
-            (hostname, realm) = self.__get_host_and_realm()
+            (hostname, realm) = self.get_host_and_realm()
             kinit_keytab(str('nova/%s@%s' % (hostname, realm)),
                          CONF.keytab, self.ccache)
             api.bootstrap(context='novajoin')
             api.finalize()
         self.batch_args = list()
 
-    def __get_host_and_realm(self):
+    def get_host_and_realm(self):
         """Return the hostname and IPA realm name.
 
            IPA 4.4 introduced the requirement that the schema be
@@ -78,9 +78,16 @@ class IPANovaJoinBase(object):
         tries = 0
 
         while tries <= self.ntries:
+            if api.Backend.rpcclient.isconnected():
+                api.Backend.rpcclient.disconnect()
             try:
                 api.Backend.rpcclient.connect()
-            except (errors.CCacheError, errors.TicketExpired) as e:
+                # ping to force an actual connection in case there is only one
+                # IPA master
+                api.Command[u'ping']()
+            except (errors.CCacheError,
+                    errors.TicketExpired,
+                    errors.KerberosError) as e:
                 LOG.debug("kinit again: %s", e)
                 # pylint: disable=no-member
                 kinit_keytab(str('nova/%s@%s' %
@@ -117,21 +124,9 @@ class IPANovaJoinBase(object):
         if not self.batch_args:
             return None
 
-        if not api.Backend.rpcclient.isconnected():
-            self.__get_connection()
-        kw = {'version': u'2.146'}  # IPA v4.2.0 for compatibility
+        kw = {}
 
-        try:
-            result = api.Command['batch'](*self.batch_args, **kw)
-            LOG.debug(result)
-            return result
-        except (errors.CCacheError, errors.TicketExpired):
-            LOG.debug("Refresh authentication")
-            api.Backend.rpcclient.disconnect()
-            self.__get_connection()
-            result = api.Command['batch'](*self.batch_arhs, **kw)
-            LOG.debug(result)
-            return result
+        return self._call_ipa('batch', *self.batch_args, **kw)
 
     def _call_ipa(self, command, *args, **kw):
         """Make an IPA call.
@@ -148,9 +143,10 @@ class IPANovaJoinBase(object):
             result = api.Command[command](*args, **kw)
             LOG.debug(result)
             return result
-        except (errors.CCacheError, errors.TicketExpired):
+        except (errors.CCacheError,
+                errors.TicketExpired,
+                errors.KerberosError):
             LOG.debug("Refresh authentication")
-            api.Backend.rpcclient.disconnect()
             self.__get_connection()
             result = api.Command[command](*args, **kw)
             LOG.debug(result)
@@ -284,7 +280,9 @@ class IPAClient(IPANovaJoinBase):
         }
         try:
             self._call_ipa('host_del', *params, **kw)
-        except errors.NotFound:
+        except (errors.NotFound, errors.ACIError):
+            # Trying to delete a host that doesn't exist will raise an ACIError
+            # to hide whether the entry exists or not
             pass
 
     def add_service(self, principal):
