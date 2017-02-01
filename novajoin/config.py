@@ -32,7 +32,7 @@ service_opts = [
                help='Kerberos client keytab file'),
     cfg.StrOpt('domain', default='localdomain',
                help='Domain for new hosts'),
-    cfg.IntOpt('connect_retries', default=1,
+    cfg.IntOpt('connect_retries', default=2,
                help='How many times to attempt to retry '
                'the connection to IPA before giving up'),
     cfg.BoolOpt('project_subdomain', default=False,
