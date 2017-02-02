@@ -24,10 +24,8 @@ There are four ways to provide authentication for the IPA integration:
 Nova join Install Options
 
 \fB\-h\fR, \fB\-\-help\fR
-          show this help message and exit
+show this help message and exit
 .TP
-\fB\-\-hostname\fB \fIHOSTNAME\fR
-Machine's fully qualified host name
 .TP
 \fB\-\-no\-kinit\fR
 Assume the user has already done a kinit (principal and password not required)
@@ -49,6 +47,26 @@ Keystone auth URL (ex http://192.168.0.1:5000/v3)
 .TP
 \fB\-\-nova\-password\fR \fINOVA_PASSWORD\fR
 Nova service user password
+.TP
+\fB\-\-precreate\fR
+Pre-create the IPA host with a One-Time Password (OTP)
+.SH "PRECREATE OPTIONS"
+These are additional options available when precreate is requested.
+.TP
+\fB\-\-server\fR \fISERVER\fR
+IPA server
+.TP
+\fB\-\-realm\fR \fIREALM\fR
+IPA realm name
+.TP
+\fB\-\-domain\fR \fIDOMAIN\fR
+IPA domain name
+.TP
+\fB\-\-hostname\fR \fIHOSTNAME\fR
+Hostname of IPA host to create
+.TP
+\fB\-\-otp-file\fR \fIOTP_FILENAME\fR
+File to write OTP to instead of stdout
 .SH "EXIT STATUS"
 0 if the installation was successful
 
