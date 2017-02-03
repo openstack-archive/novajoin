@@ -322,7 +322,7 @@ class IPAClient(IPANovaJoinBase):
     def delete_service(self, principal, batch=True):
         LOG.debug('Deleting service: ' + principal)
         params = [principal]
-        service_args = {'force': True}
+        service_args = {}
         if batch:
             self._add_batch_operation('service_del', *params, **service_args)
         else:
