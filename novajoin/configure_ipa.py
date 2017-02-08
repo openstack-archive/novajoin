@@ -209,7 +209,7 @@ class NovajoinRole(object):
         self._call_ipa(u'permission_add',
                        u'Modify service managedBy attribute',
                        {'ipapermright': u'write',
-                        'extratargetfilter': u'service',
+                        'type': u'service',
                         'attrs': u'managedby'})
 
     def _add_privileges(self):
