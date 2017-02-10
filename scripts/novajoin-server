@@ -14,9 +14,12 @@
 #    under the License.
 
 import sys
+import os
 
 from novajoin.wsgi import main
 
 
 if __name__ == "__main__":
+    # rcrit: work around "PKCS #11 module returned CKR_DEVICE_ERROR"
+    os.environ['NSS_STRICT_NOFORK'] = 'DISABLED'
     sys.exit(main())
