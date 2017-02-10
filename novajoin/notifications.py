@@ -201,7 +201,10 @@ class NotificationEndpoint(object):
 
         for principal in services:
             if principal not in services_deleted:
-                if self.ipaclient.service_has_hosts(principal):
+                try:
+                    if self.ipaclient.service_has_hosts(principal):
+                        continue
+                except KeyError:
                     continue
                 self.ipaclient.delete_service(principal, batch=False)
                 services_deleted.append(principal)
