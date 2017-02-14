@@ -39,7 +39,7 @@ LOG = logging.getLogger(__name__)
 GLANCE_APIVERSION = 2
 
 
-def get_api_servers():
+def get_api_servers(context, session):
     """Return iterator of glance api_servers.
 
     Return iterator of glance api_servers to cycle through the
@@ -48,7 +48,7 @@ def get_api_servers():
 
     api_servers = []
 
-    ks = keystone_client.get_client()
+    ks = keystone_client.get_client(session)
 
     catalog = keystone_client.get_service_catalog(ks)
 
@@ -67,12 +67,14 @@ def get_api_servers():
 class GlanceClient(object):
     """Wrapper around glance client."""
 
-    def __init__(self):
+    def __init__(self, context, session):
 
         self.version = GLANCE_APIVERSION
-        self.api_servers = get_api_servers()
+        self.api_servers = get_api_servers(context, session)
         self.api_server = None
         self.client = None
+        self.context = context
+        self.session = session
 
     def _glance_client(self, context):
         """Instantiate a new glanceclient.Client object."""
@@ -84,9 +86,8 @@ class GlanceClient(object):
 
         params = {}
 
-        session = keystone_client.get_session()
         return glanceclient.Client(str(self.version), self.api_server,
-                                   session=session, **params)
+                                   session=self.session, **params)
 
     def call(self, context, method, *args, **kwargs):
         """Call a glance client method."""
@@ -134,8 +135,8 @@ class GlanceClient(object):
 class GlanceImageService(object):
     """Provides storage and retrieval of disk image objects within Glance."""
 
-    def __init__(self, client=None):
-        self._client = client or GlanceClient()
+    def __init__(self, client=None, context=None, session=None):
+        self._client = client or GlanceClient(context, session)
         self._image_schema = None
         self.temp_images = None
 
@@ -285,5 +286,5 @@ def _translate_plain_exception(exc_value):
     return exc_value
 
 
-def get_default_image_service():
-    return GlanceImageService()
+def get_default_image_service(context, session):
+    return GlanceImageService(context=context, session=session)

@@ -12,37 +12,51 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 
 from keystoneauth1 import exceptions as keystone_exception
-from keystoneauth1 import loading as ks_loading
+from keystoneauth1.identity import v3
+from keystoneauth1 import session as ksc_session
 from keystoneclient.v3 import client as ks_client_v3
 from oslo_config import cfg
 
-CFG_GROUP = "service_credentials"
-
-_SESSION = None
-_AUTH = None
+CONF = cfg.CONF
+LOG = logging.getLogger(__name__)
 
 
-def get_session():
-    """Get a service credentials auth session."""
+class Session(object):
+    """A Keysone auth session.
 
-    global _SESSION  # pylint: disable=global-statement
-    global _AUTH  # pylint: disable=global-statement
+       This is session is expected to be generated early in
+       processing and re-used during the lifetime of a request
+       to novajoin.
 
-    if not _AUTH:
-        _AUTH = ks_loading.load_auth_from_conf_options(cfg.CONF, CFG_GROUP)
-    if not _SESSION:
-        _SESSION = ks_loading.load_session_from_conf_options(
-            cfg.CONF, CFG_GROUP, auth=_AUTH, session=_SESSION
-        )
-    return _SESSION
+       It uses the credentials passed in.
+    """
+
+    def __init__(self, token, project_name,
+                 project_domain_name='default'):
+        try:
+            self.auth_url = CONF['keystone_authtoken'].auth_url
+        except cfg.NoSuchOptError:
+            LOG.error("auth_url is not defined in [keystone_authtoken]")
+            self.auth_url = None
+        self.token = token
+        self.project_name = project_name
+        self.project_domain_name = project_domain_name
+
+    def get_session(self):
+        auth = v3.Token(auth_url=self.auth_url,
+                        token=self.token,
+                        project_domain_name=self.project_domain_name,
+                        project_name=self.project_name)
+
+        return ksc_session.Session(auth=auth)
 
 
-def get_client(trust_id=None):
-    """Return a client for keystone v3 endpoint, optionally using a trust."""
-    session = get_session()
-    return ks_client_v3.Client(session=session, trust_id=trust_id)
+def get_client(session):
+    """Return a client for keystone v3 endpoint."""
+    return ks_client_v3.Client(session=session)
 
 
 def get_service_catalog(client):
@@ -53,29 +67,9 @@ def get_auth_token(client):
     return client.session.auth.get_access(client.session).auth_token
 
 
-def register_keystoneauth_opts(conf):
-    ks_loading.register_auth_conf_options(conf, CFG_GROUP)
-    ks_loading.register_session_conf_options(
-        conf, CFG_GROUP,
-        deprecated_opts={'cacert': [
-            cfg.DeprecatedOpt('os-cacert', group=CFG_GROUP),
-            cfg.DeprecatedOpt('os-cacert', group="DEFAULT")]
-        })
-
-
-def list_keystoneauth_opts():
-    return [('service_credentials', (
-            ks_loading.get_auth_common_conf_options() +
-            ks_loading.get_auth_plugin_conf_options('password')))]
-
-
 def get_project_name(project_id):
     """Given a keystone project-id return the name of the project."""
-    # Handle case where no credentials are configured
-    try:
-        ks = get_client()
-    except cfg.NoSuchOptError:
-        return None
+    ks = get_client()
 
     try:
         data = ks.get('projects/%s' % project_id)
@@ -88,11 +82,7 @@ def get_project_name(project_id):
 
 def get_user_name(user_id):
     """Given a keystone user-id return the name of the user."""
-    # Handle case where no credentials are configured
-    try:
-        ks = get_client()
-    except cfg.NoSuchOptError:
-        return None
+    ks = get_client()
 
     try:
         data = ks.get('users/%s' % user_id)

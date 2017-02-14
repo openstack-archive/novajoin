@@ -16,7 +16,6 @@ import sys
 
 from novajoin import config
 from novajoin import exception
-from novajoin import keystone_client
 from oslo_concurrency import processutils
 from oslo_log import log
 from oslo_service import service
@@ -104,7 +103,6 @@ def process_launcher():
 
 def main():
 
-    keystone_client.register_keystoneauth_opts(CONF)
     CONF(sys.argv[1:], version='1.0.11',
          default_config_files=config.find_config_files())
     log.setup(CONF, 'join')

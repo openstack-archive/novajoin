@@ -141,7 +141,13 @@ class JoinController(Controller):
             LOG.debug('IPA enrollment not requested in instance creation')
 
         context = req.environ.get('novajoin.context')
-        image_service = get_default_image_service()
+
+        ks = keystone_client.Session(req.headers.get('X-Auth-Token'),
+                                     req.headers.get('X-Project-Name'),
+                                     req.headers.get('X-Project-Domain-Name'))
+        session = ks.get_session()
+
+        image_service = get_default_image_service(context, session)
         image_metadata = {}
         try:
             image = image_service.show(context, image_id)
@@ -165,7 +171,7 @@ class JoinController(Controller):
 
         # Ensure this instance exists in nova and retrieve the
         # name of the user that requested it.
-        instance = get_instance(instance_id)
+        instance = get_instance(instance_id, session)
         if instance is None:
             msg = 'No such instance-id, %s' % instance_id
             LOG.error(msg)

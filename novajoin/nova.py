@@ -19,8 +19,6 @@ from novaclient import exceptions
 from oslo_config import cfg
 from oslo_log import log as logging
 
-from novajoin import keystone_client
-
 
 CONF = cfg.CONF
 
@@ -32,20 +30,19 @@ NOVA_APIVERSION = 2.1
 class NovaClient(object):
     """Wrapper around nova client."""
 
-    def __init__(self):
+    def __init__(self, session):
 
         self.version = NOVA_APIVERSION
-        self.client = self._nova_client()
+        self.client = self._nova_client(session)
 
-    def _nova_client(self):
+    def _nova_client(self, session):
         """Instantiate a new novaclient.Client object."""
 
-        session = keystone_client.get_session()
         return client.Client(str(self.version), session=session)
 
 
-def get_instance(instance_id):
-    client = NovaClient()
+def get_instance(instance_id, session):
+    client = NovaClient(session)
     try:
         return client.client.servers.get(instance_id)
     except exceptions.NotFound:

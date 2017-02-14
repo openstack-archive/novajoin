@@ -111,8 +111,9 @@ def install(opts):
     config = SafeConfigParser()
     config.read(JOINCONF)
     config.set('DEFAULT', 'domain', api.env.domain)  # pylint: disable=no-member
-    config.set('service_credentials', 'auth_url', opts.keystone_auth_url)
-    config.set('service_credentials', 'password', opts.nova_password)
+    config.set('keystone_authtoken', 'auth_url', opts.keystone_auth_url)
+    config.set('keystone_authtoken', 'password', opts.nova_password)
+    config.set('keystone_authtoken', 'username', 'nova')
 
     with open(JOINCONF, 'w') as f:
         config.write(f)
