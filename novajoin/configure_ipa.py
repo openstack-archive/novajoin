@@ -130,7 +130,7 @@ class NovajoinRole(object):
             conn.do_sasl_gssapi_bind()
             certs = certstore.get_ca_certs(conn, basedn, realm, False)
         except Exception as e:
-            raise ConfigurationError("get_ca_certs_from_ldap() error: %s", e)
+            raise ConfigurationError("get_ca_certs_from_ldap() error: %s" % e)
 
         certs = [x509.load_certificate(c[0], x509.DER) for c in certs
                  if c[2] is not False]
