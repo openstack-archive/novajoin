@@ -237,7 +237,10 @@ class NovajoinRole(object):
                            u'System: read dns entries',
                            u'System: remove dns entries',
                            u'System: add dns entries',
-                           u'System: update dns entries']})
+                           u'System: update dns entries',
+                           u'Retrieve Certificates from the CA',
+                           u'Revoke Certificate']})
+
 
     def _add_role(self):
         logging.debug('Add role')
