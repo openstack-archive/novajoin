@@ -55,6 +55,36 @@ class IPANovaJoinBase(object):
             api.finalize()
         self.batch_args = list()
 
+    def split_principal(self, principal):
+        """Split a principal into its components. Copied from IPA 4.0.0"""
+        service = hostname = realm = None
+
+        # Break down the principal into its component parts, which may or
+        # may not include the realm.
+        sp = principal.split('/')
+        if len(sp) != 2:
+            raise errors.MalformedServicePrincipal(reason=_('missing service'))
+
+        service = sp[0]
+        if len(service) == 0:
+            raise errors.MalformedServicePrincipal(reason=_('blank service'))
+        sr = sp[1].split('@')
+        if len(sr) > 2:
+            raise errors.MalformedServicePrincipal(
+                reason=_('unable to determine realm'))
+
+        hostname = sr[0].lower()
+        if len(sr) == 2:
+            realm = sr[1].upper()
+            # At some point we'll support multiple realms
+            if realm != api.env.realm:
+                raise errors.RealmMismatch()
+        else:
+            realm = api.env.realm
+
+        # Note that realm may be None.
+        return (service, hostname, realm)
+
     def get_host_and_realm(self):
         """Return the hostname and IPA realm name.
 
@@ -310,14 +340,6 @@ class IPAClient(IPANovaJoinBase):
     def service_has_hosts(self, service_principal):
         """Return True if hosts other than parent manages this service"""
 
-        # Import here instead of globally because it needs to occur after
-        # the IPA API has been finalized.
-        try:
-            from ipalib.plugins.service import split_principal
-        except ImportError:
-            from ipapython.kerberos import (
-                parse_princ_name_and_realm as split_principal)
-
         LOG.debug('Checking if principal ' + service_principal + ' has hosts')
         params = [service_principal]
         service_args = {}
@@ -326,7 +348,12 @@ class IPAClient(IPANovaJoinBase):
         except errors.NotFound:
             raise KeyError
         serviceresult = result['result']
-        (service, hostname, realm) = split_principal(service_principal)
+        try:
+            (service, hostname, realm) = self.split_principal(
+                service_principal)
+        except errors.MalformedServicePrincipal as e:
+            LOG.error("Unable to split principal %s: %s", service_principal, e)
+            raise
         for candidate in serviceresult.get('managedby_host', []):
             if candidate != hostname:
                 return True
