@@ -155,6 +155,7 @@ class IPANovaJoinBase(object):
             return None
 
         kw = {}
+        LOG.debug(self.batch_args)
 
         return self._call_ipa('batch', *self.batch_args, **kw)
 
@@ -280,15 +281,24 @@ class IPAClient(IPANovaJoinBase):
         a virtual host (VIP).  These aliases are denoted 'subhosts',
         """
         LOG.debug('Deleting subhost: ' + hostname)
-        params = [hostname]
+        host_params = [hostname]
+
+        parts = hostname.split('.')
+        domain = ('.'.join(parts[1:]) + '.').decode('UTF-8')
+
+        dns_params = [domain, parts[0]]
 
         # If there is no DNS entry, this operation fails
-        kw = {'updatedns': False, }
+        host_kw = {'updatedns': False, }
+
+        dns_kw = {'del_all': True, }
 
         if batch:
-            self._add_batch_operation('host_del', *params, **kw)
+            self._add_batch_operation('host_del', *host_params, **host_kw)
+            self._add_batch_operation('dnsrecord_del', *dns_params, **dns_kw)
         else:
-            return self._call_ipa('host_del', *params, **kw)
+            self._call_ipa('host_del', *host_params, **host_kw)
+            self._call_ipa('dnsrecord_del', *dns_params, **dns_kw)
 
     def delete_host(self, hostname, metadata=None):
         """Delete a host from IPA and remove all related DNS entries."""
@@ -306,13 +316,26 @@ class IPAClient(IPANovaJoinBase):
 
         params = [hostname]
         kw = {
-            'updatedns': True,
+            'updatedns': False,
         }
         try:
             self._call_ipa('host_del', *params, **kw)
         except (errors.NotFound, errors.ACIError):
             # Trying to delete a host that doesn't exist will raise an ACIError
             # to hide whether the entry exists or not
+            pass
+
+        parts = hostname.split('.')
+        domain = ('.'.join(parts[1:]) + '.').decode('UTF-8')
+
+        dns_params = [domain, parts[0]]
+
+        dns_kw = {'del_all': True, }
+
+        try:
+            self._call_ipa('dnsrecord_del', *dns_params, **dns_kw)
+        except (errors.NotFound, errors.ACIError):
+            # Ignore DNS deletion errors
             pass
 
     def add_service(self, principal):
@@ -348,12 +371,14 @@ class IPAClient(IPANovaJoinBase):
         except errors.NotFound:
             raise KeyError
         serviceresult = result['result']
+
         try:
             (service, hostname, realm) = self.split_principal(
                 service_principal)
         except errors.MalformedServicePrincipal as e:
             LOG.error("Unable to split principal %s: %s", service_principal, e)
             raise
+
         for candidate in serviceresult.get('managedby_host', []):
             if candidate != hostname:
                 return True
