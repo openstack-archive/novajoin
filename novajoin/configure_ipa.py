@@ -253,15 +253,16 @@ class NovajoinRole(object):
     def _add_host(self, filename):
         logging.debug('Add host %s', self.hostname)
         otp = ipa_generate_password(allowed_chars)
+
+        self._call_ipa(u'host_add', six.text_type(self.hostname),
+                       {'description': u'Undercloud host',
+                        'userpassword': six.text_type(otp),
+                        'force': True})
         if filename:
             with open(filename, "w") as fd:
                 fd.write("%s\n" % otp)
         else:
             return otp
-        self._call_ipa(u'host_add', six.text_type(self.hostname),
-                       {'description': u'Undercloud host',
-                        'userpassword': six.text_type(otp),
-                        'force': True})
 
     def _add_service(self):
         logging.debug('Add service %s', self.service)
@@ -379,8 +380,9 @@ def validate_options(opts):
         if not opts.password:
             raise ConfigurationError('Password must be provided.')
 
-    try:
-        pwd.getpwnam(opts.user)
-    except KeyError:
-        raise ConfigurationError('User: %s not found on the system' %
-                                 opts.user)
+    if not opts.precreate:
+        try:
+            pwd.getpwnam(opts.user)
+        except KeyError:
+            raise ConfigurationError('User: %s not found on the system' %
+                                     opts.user)
