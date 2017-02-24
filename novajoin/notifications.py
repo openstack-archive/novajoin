@@ -230,7 +230,7 @@ def main():
                                                       targets,
                                                       endpoints,
                                                       executor='threading',
-                                                      allow_requeue=True)
+                                                      allow_requeue=False)
     LOG.info("Starting")
     server.start()
     try:
