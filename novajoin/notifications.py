@@ -223,7 +223,7 @@ def main():
     logging.setup(CONF, 'join')
 
     transport = oslo_messaging.get_transport(CONF)
-    targets = [oslo_messaging.Target(topic='notifications')]
+    targets = [oslo_messaging.Target(topic=CONF.notifications_topic)]
     endpoints = [NotificationEndpoint()]
 
     server = oslo_messaging.get_notification_listener(transport,
