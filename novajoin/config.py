@@ -51,6 +51,8 @@ service_opts = [
                help='Number retries when downloading an image from glance'),
     cfg.StrOpt('auth_strategy', default='keystone',
                help='Strategy to use for authentication.'),
+    cfg.StrOpt('notifications_topic', default='notifications',
+               help='Topic on which to listen to notifications.'),
 ]
 
 
