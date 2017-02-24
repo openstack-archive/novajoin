@@ -229,8 +229,7 @@ def main():
     server = oslo_messaging.get_notification_listener(transport,
                                                       targets,
                                                       endpoints,
-                                                      executor='threading',
-                                                      allow_requeue=True)
+                                                      executor='threading')
     LOG.info("Starting")
     server.start()
     try:
