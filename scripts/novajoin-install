@@ -99,7 +99,7 @@ def install(opts):
 
     novajoin = configure_ipa.NovajoinRole(user=opts.user)
     if not opts.no_kinit:
-        novajoin.kinit(opts.principal, opts.password)
+        novajoin.kinit(opts.principal, api.env.realm, opts.password)
 
     try:
         api.Backend.rpcclient.connect()
@@ -111,8 +111,20 @@ def install(opts):
     config = SafeConfigParser()
     config.read(JOINCONF)
     config.set('DEFAULT', 'domain', api.env.domain)  # pylint: disable=no-member
+    config.set('DEFAULT',
+               'api_paste_config',
+               '/etc/nova/join-api-paste.ini')
+
+    if not config.has_section('service_credentials'):
+        config.add_section('service_credentials')
+
     config.set('service_credentials', 'auth_url', opts.keystone_auth_url)
     config.set('service_credentials', 'password', opts.nova_password)
+    config.set('service_credentials', 'username', 'nova')
+    config.set('service_credentials', 'auth_type', 'password')
+    config.set('service_credentials', 'project_domain_name', 'default')
+    config.set('service_credentials', 'project_name', 'service')
+    config.set('service_credentials', 'user_domain_id', 'default')
 
     with open(JOINCONF, 'w') as f:
         config.write(f)
@@ -136,7 +148,7 @@ def install(opts):
 
     config.set('DEFAULT',
                'vendordata_dynamic_targets',
-               'join@http://127.0.0.1:9999/v1/')
+               'join@http://127.0.0.1:9090/v1/')
 
     # Notifications
     config.set('DEFAULT',

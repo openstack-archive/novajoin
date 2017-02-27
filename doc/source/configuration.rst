@@ -9,7 +9,7 @@ DEFAULT
 
 join_listen_port
 ~~~~~~~~~~~~~~~~
-Port that the REST service listens on. Default 9999.
+Port that the REST service listens on. Default 9090.
 
 api_paste_config
 ~~~~~~~~~~~~~~~~
