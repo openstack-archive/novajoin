@@ -55,7 +55,7 @@ novajoin REST service and enable notifications in
 /etc/nova/nova.conf:
 
     vendordata_providers = StaticJSON, DynamicJSON
-    vendordata_dynamic_targets = 'join@http://127.0.0.1:9999/v1/'
+    vendordata_dynamic_targets = 'join@http://127.0.0.1:9090/v1/'
     vendordata_dynamic_connect_timeout = 5
     vendordata_dynamic_read_timeout = 30
     vendordata_jsonfile_path = /etc/nova/cloud-config-novajoin.json
@@ -106,7 +106,7 @@ Metadata REST Service Configuration
 The REST service is configured in /etc/nova/join.conf in the DEFAULT
 section.  It provides the following options:
 
-    - join_listen_port: The TCP port to listen on. Defaults to 9999.
+    - join_listen_port: The TCP port to listen on. Defaults to 9090.
     - api_paste_config: The paste configuration file to use.
     - debug: Enable additional debugging output. Default is False.
     - auth_strategy: The authentication strategy to use
