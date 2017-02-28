@@ -34,6 +34,7 @@ from six.moves import input
 from six.moves.configparser import SafeConfigParser, NoOptionError
 from subprocess import CalledProcessError
 from string import Template
+from urllib3.util import parse_url
 
 
 DATADIR = '/usr/share/novajoin'
@@ -108,11 +109,24 @@ def install(opts):
 
     logger.info('Installing default config files')
 
+    keystone_url = parse_url(opts.keystone_auth_url)
+
     config = SafeConfigParser()
     config.read(JOINCONF)
     config.set('DEFAULT', 'domain', api.env.domain)  # pylint: disable=no-member
     config.set('service_credentials', 'auth_url', opts.keystone_auth_url)
     config.set('service_credentials', 'password', opts.nova_password)
+
+    if not config.has_section('keystone_authtoken'):
+        config.add_section('keystone_authtoken')
+
+    config.set('keystone_authtoken', 'memcached_servers',
+               '%s:11211' % keystone_url.hostname)
+    config.set('keystone_authtoken', 'project_name', 'service')
+    config.set('keystone_authtoken', 'password', opts.nova_password)
+    config.set('keystone_authtoken', 'username', 'nova')
+    config.set('keystone_authtoken', 'auth_url', opts.keystone_auth_url)
+    config.set('keystone_authtoken', 'auth_type', 'password')
 
     with open(JOINCONF, 'w') as f:
         config.write(f)
