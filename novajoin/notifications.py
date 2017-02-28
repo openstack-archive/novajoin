@@ -86,8 +86,18 @@ class NotificationEndpoint(object):
             hostname_short = payload.get('hostname')
             instance_id = payload.get('instance_id')
             payload_metadata = payload.get('metadata')
+            image_metadata = payload.get('image_meta')
 
             hostname = self._generate_hostname(hostname_short)
+
+            enroll = payload_metadata.get('ipa_enroll', '')
+            image_enroll = image_metadata.get('ipa_enroll', '')
+
+            if enroll.lower() != 'true' and image_enroll.lower() != 'true':
+                LOG.info('IPA enrollment not requested, skipping delete of %s',
+                         hostname)
+                return
+
             LOG.info("Delete host %s (%s)", instance_id, hostname)
             self.ipaclient.delete_host(hostname, {})
             self.delete_subhosts(hostname_short, payload_metadata)
