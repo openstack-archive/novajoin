@@ -13,9 +13,11 @@
 #    under the License.
 
 import os
+import time
 import uuid
 
 try:
+    from gssapi.exceptions import GSSError
     from ipalib import api
     from ipalib import errors
     from ipapython.ipautil import kinit_keytab
@@ -38,7 +40,7 @@ LOG = logging.getLogger(__name__)
 
 class IPANovaJoinBase(object):
 
-    def __init__(self):
+    def __init__(self, backoff=0):
         try:
             self.ntries = CONF.connect_retries
         except cfg.NoSuchOptError:
@@ -54,6 +56,7 @@ class IPANovaJoinBase(object):
             api.bootstrap(context='novajoin')
             api.finalize()
         self.batch_args = list()
+        self.backoff = backoff
 
     def split_principal(self, principal):
         """Split a principal into its components. Copied from IPA 4.0.0"""
@@ -109,11 +112,19 @@ class IPANovaJoinBase(object):
 
         return (hostname, realm)
 
+    def __backoff(self):
+        LOG.debug("Backing off %s seconds", self.backoff)
+        time.sleep(self.backoff)
+        if self.backoff < 1024:
+            self.backoff = self.backoff * 2
+
     def __get_connection(self):
         """Make a connection to IPA or raise an error."""
         tries = 0
 
-        while tries <= self.ntries:
+        while (tries <= self.ntries) or (self.backoff > 0):
+            if self.backoff == 0:
+                LOG.debug("Attempt %d of %d", tries, self.ntries)
             if api.Backend.rpcclient.isconnected():
                 api.Backend.rpcclient.disconnect()
             try:
@@ -126,11 +137,20 @@ class IPANovaJoinBase(object):
                     errors.KerberosError) as e:
                 LOG.debug("kinit again: %s", e)
                 # pylint: disable=no-member
-                kinit_keytab(str('nova/%s@%s' %
-                             (api.env.host, api.env.realm)),
-                             CONF.keytab,
-                             self.ccache)
+                try:
+                    kinit_keytab(str('nova/%s@%s' %
+                                 (api.env.host, api.env.realm)),
+                                 CONF.keytab,
+                                 self.ccache)
+                except GSSError as e:
+                    LOG.debug("kinit failed: %s", e)
+                if tries > 0 and self.backoff:
+                    self.__backoff()
                 tries += 1
+            except errors.NetworkError:
+                tries += 1
+                if self.backoff:
+                    self.__backoff()
             else:
                 return
 
@@ -151,11 +171,7 @@ class IPANovaJoinBase(object):
         })
 
     def flush_batch_operation(self):
-        """Make an IPA batch call
-
-           Try twice to run the command. One execution may fail if we
-           previously had a connection but the ticket expired.
-        """
+        """Make an IPA batch call."""
         LOG.debug("flush_batch_operation")
         if not self.batch_args:
             return None
@@ -166,28 +182,27 @@ class IPANovaJoinBase(object):
         return self._call_ipa('batch', *self.batch_args, **kw)
 
     def _call_ipa(self, command, *args, **kw):
-        """Make an IPA call.
-
-           Try twice to run the command. One execution may fail if we
-           previously had a connection but the ticket expired.
-        """
-
+        """Make an IPA call."""
         if not api.Backend.rpcclient.isconnected():
             self.__get_connection()
         if 'version' not in kw:
             kw['version'] = u'2.146'  # IPA v4.2.0 for compatibility
-        try:
-            result = api.Command[command](*args, **kw)
-            LOG.debug(result)
-            return result
-        except (errors.CCacheError,
-                errors.TicketExpired,
-                errors.KerberosError):
-            LOG.debug("Refresh authentication")
-            self.__get_connection()
-            result = api.Command[command](*args, **kw)
-            LOG.debug(result)
-            return result
+
+        while True:
+            try:
+                result = api.Command[command](*args, **kw)
+                LOG.debug(result)
+                return result
+            except (errors.CCacheError,
+                    errors.TicketExpired,
+                    errors.KerberosError):
+                LOG.debug("Refresh authentication")
+                self.__get_connection()
+            except errors.NetworkError:
+                if self.backoff:
+                    self.__backoff()
+                else:
+                    raise
 
     def _ipa_client_configured(self):
         """Determine if the machine is an enrolled IPA client.
@@ -383,7 +398,8 @@ class IPAClient(IPANovaJoinBase):
 
         try:
             (service, hostname, realm) = self.split_principal(
-                service_principal)
+                service_principal
+            )
         except errors.MalformedServicePrincipal as e:
             LOG.error("Unable to split principal %s: %s", service_principal, e)
             raise

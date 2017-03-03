@@ -38,6 +38,8 @@ CONF = config.CONF
 
 LOG = logging.getLogger(__name__)
 
+BACKOFF = 2
+
 
 def novaclient():
     session = get_session()
@@ -58,9 +60,6 @@ class NotificationEndpoint(object):
                    '^network.floating_ip.(dis)?associate|'
                    '^floatingip.update.end')
 
-    def __init__(self):
-        self.ipaclient = IPAClient()
-
     def _generate_hostname(self, hostname):
         # FIXME: Don't re-calculate the hostname, fetch it from somewhere
         project = 'foo'
@@ -78,6 +77,7 @@ class NotificationEndpoint(object):
         LOG.debug("publisher: %s, event: %s, metadata: %s", publisher_id,
                   event_type, metadata)
 
+        ipaclient = IPAClient(backoff=BACKOFF)
         if event_type == 'compute.instance.create.end':
             hostname = self._generate_hostname(payload.get('hostname'))
             instance_id = payload.get('instance_id')
@@ -99,15 +99,15 @@ class NotificationEndpoint(object):
                 return
 
             LOG.info("Delete host %s (%s)", instance_id, hostname)
-            self.ipaclient.delete_host(hostname, {})
-            self.delete_subhosts(hostname_short, payload_metadata)
+            ipaclient.delete_host(hostname, {})
+            self.delete_subhosts(ipaclient, hostname_short, payload_metadata)
         elif event_type == 'network.floating_ip.associate':
             floating_ip = payload.get('floating_ip')
             LOG.info("Associate floating IP %s" % floating_ip)
             nova = novaclient()
             server = nova.servers.get(payload.get('instance_id'))
             if server:
-                self.ipaclient.add_ip(server.get, floating_ip)
+                ipaclient.add_ip(server.get, floating_ip)
             else:
                 LOG.error("Could not resolve %s into a hostname",
                           payload.get('instance_id'))
@@ -117,7 +117,7 @@ class NotificationEndpoint(object):
             nova = novaclient()
             server = nova.servers.get(payload.get('instance_id'))
             if server:
-                self.ipaclient.remove_ip(server.name, floating_ip)
+                ipaclient.remove_ip(server.name, floating_ip)
             else:
                 LOG.error("Could not resolve %s into a hostname",
                           payload.get('instance_id'))
@@ -135,13 +135,13 @@ class NotificationEndpoint(object):
                 if device_id:
                     server = nova.servers.get(device_id)
                     if server:
-                        self.ipaclient.add_ip(server.name, floating_ip)
+                        ipaclient.add_ip(server.name, floating_ip)
             else:
                 LOG.error("Expected 1 port, got %d", len(ports))
         else:
             LOG.error("Status update or unknown")
 
-    def delete_subhosts(self, hostname_short, metadata):
+    def delete_subhosts(self, ipaclient, hostname_short, metadata):
         """Delete subhosts and remove VIPs if possible.
 
         Servers can have multiple network interfaces, and therefore can
@@ -162,14 +162,15 @@ class NotificationEndpoint(object):
             return
 
         if 'compact_services' in metadata:
-            self.handle_compact_services(hostname_short,
+            self.handle_compact_services(ipaclient, hostname_short,
                                          metadata.get('compact_services'))
         managed_services = [metadata[key] for key in metadata.keys()
                             if key.startswith('managed_service_')]
         if managed_services:
-            self.handle_managed_services(managed_services)
+            self.handle_managed_services(ipaclient, managed_services)
 
-    def handle_compact_services(self, host_short, service_repr_json):
+    def handle_compact_services(self, ipaclient, host_short,
+                                service_repr_json):
         """Reconstructs and removes subhosts for compact services.
 
            Data looks like this:
@@ -187,7 +188,7 @@ class NotificationEndpoint(object):
         service_repr = json.loads(service_repr_json)
         hosts_found = list()
 
-        self.ipaclient.start_batch_operation()
+        ipaclient.start_batch_operation()
         for service_name, net_list in service_repr.items():
             for network in net_list:
                 host = "%s.%s" % (host_short, network)
@@ -195,11 +196,11 @@ class NotificationEndpoint(object):
 
                 # remove host
                 if principal_host not in hosts_found:
-                    self.ipaclient.delete_subhost(principal_host)
+                    ipaclient.delete_subhost(principal_host)
                     hosts_found.append(principal_host)
-        self.ipaclient.flush_batch_operation()
+        ipaclient.flush_batch_operation()
 
-    def handle_managed_services(self, services):
+    def handle_managed_services(self, ipaclient, services):
         """Delete any managed services if possible.
 
            Checks to see if the managed service subhost has no managed hosts
@@ -212,17 +213,17 @@ class NotificationEndpoint(object):
         for principal in services:
             if principal not in services_deleted:
                 try:
-                    if self.ipaclient.service_has_hosts(principal):
+                    if ipaclient.service_has_hosts(principal):
                         continue
                 except KeyError:
                     continue
-                self.ipaclient.delete_service(principal, batch=False)
+                ipaclient.delete_service(principal, batch=False)
                 services_deleted.append(principal)
 
             principal_host = principal.split('/', 1)[1]
             if principal_host not in hosts_deleted:
-                if not self.ipaclient.host_has_services(principal_host):
-                    self.ipaclient.delete_subhost(principal_host, batch=False)
+                if not ipaclient.host_has_services(principal_host):
+                    ipaclient.delete_subhost(principal_host, batch=False)
                     hosts_deleted.append(principal_host)
 
 
