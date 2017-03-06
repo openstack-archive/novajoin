@@ -40,9 +40,46 @@ required:
 
 {free}ipa-python
 
+These may be pip-installable but as of March 2017 it has only been
+extensively tested with real packages installed on RHEL/CentOS/Fedora.
+
 
 Configuration
 =============
+
+There are two installation scenarios:
+
+1. Triple-O Quickstart
+
+This is primary use case to date. In this scenario the heat and
+puppet code manages most of the configuration. There is even some
+code to configure everything if you're willing to provide the
+IPA admin password.
+
+If not you can pre-create the entries needed by running this on
+any machine that has access to your IPA server. It can be
+run from a git clone of novajoin by setting
+PYTHONPATH=/path/to/novajoin if you'd like:
+
+novajoin-ipa-setup --precreate  --principal admin --password password \
+--server ipa.example.com --realm EXAMPLE.COM --domain example.com \
+--hostname undercloud.example.com
+
+The machine executing this script does NOT need to be enrolled as
+an IPA client.
+
+The output from the script is the OTP you'll set in undercloud_ipa_otp
+in the yaml configuration for OOOQ.
+
+The idea here is that the undercloud node is pre-created and an OTP
+generated. The OOOQ script knows how to enroll hosts and will pass this
+OTP onto ipa-client-install, retrieve the keytab for the novajoin
+service principal and configure and start the services.
+
+2. Manual setup
+
+It is also possible to setup novajoin within an existing OpenStack
+deployment (I do this in devstack, for example).
 
 The machine running the novajoin service needs to be enrolled
 as an IPA client.
@@ -61,15 +98,15 @@ novajoin REST service and enable notifications in
     vendordata_jsonfile_path = /etc/nova/cloud-config-novajoin.json
 
     notification_driver = messaging
-    notification_topic = notifications
+    notification_topic = notifications,novajoin
     notify_on_state_change = vm_state
 
 
 Pre-requisites
 --------------
 
-Cloud-init 0.7.6+ is required to retreive dynamic metadata when
-config_drive is True.
+Cloud-init 0.7.6+ is required to retrieve dynamic metadata when
+config_drive is True. 0.7.9 does not seem to work with OOOQ.
 
 You will need the IPA admin password, or an account that can
 add privileges, permissions, roles and can retrieve keytabs.
@@ -124,9 +161,23 @@ section.  It provides the following options:
               DNS label. This will convert invalid values to a dash (-)
               dropping leading and trailing dashes.
 
+Notification listener Configuration
+===================================
+
+The only special configuration needed here is to configure nova to
+send notifications to the novajoin topic in /etc/nova/nova.conf:
+
+    notification_topic = notifications,novajoin
+
+If you simply use notifications and ceilometer is running then the
+notifications will be roughly split between the two services in a
+round-robin format.
 
 Usage
 =====
+
+This demonstrates how novajoin works once the services are installed,
+configured and running:
 
 Sample usage from the command-line:
 
@@ -134,6 +185,8 @@ Sample usage from the command-line:
 $ openstack server create --flavor m1.tiny --image cirros-0.3.4-x86_64-uec test --property ipa_enroll=True
 $ ssh <IP>
 $ curl http://169.254.169.254/openstack/2016-10-06/vendor_data2.json
+$ id admin
+uid=#########(admin) gid=#########(admins) groups=#########(admins)
 ```
 
 The curl output will include a "join" element in the returned dict.
@@ -144,6 +197,10 @@ enrollment with ipa-client-install via:
 # ipa-client-install -U -w <ipaotp> --hostname <hostname>
 ```
 
+The provided cloud-init script should do all this for you, automatically
+fetching the OTP and enrolling the client.
+
+This id command confirms that enrollment was successful.
 
 Logging
 =======
