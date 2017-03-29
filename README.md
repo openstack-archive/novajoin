@@ -103,6 +103,27 @@ novajoin REST service and enable notifications in
     notification_topic = notifications,novajoin_notifications
     notify_on_state_change = vm_state
 
+Novajoin enables keystone authentication by default, as seen in
+**/etc/nova/join-api-paste.ini**. So credentials need to be set for nova to be
+able to communicate with novajoin. This we can set in the
+``[vendordata_dynamic_auth]`` section of **/etc/nova/nova.conf**::
+
+    [vendordata_dynamic_auth]
+    #
+    # Options within this group control the authentication of the vendordata
+    # subsystem of the metadata API server (and config drive) with external
+    # systems.
+
+    auth_type = password
+    password = < service user's password  >
+    username = < service user >
+    project_name = < service project >
+    user_domain_name = < service user's domain >
+    project_domain_name = < service project's domain >
+    os_region_name = < region >
+
+It is possible to just use the nova credentials here; or create a user just for
+this. So choose depending on your requirements.
 
 Pre-requisites
 --------------
@@ -162,6 +183,11 @@ section.  It provides the following options:
     - normalize_project: A project name can contain values not allowed as a
               DNS label. This will convert invalid values to a dash (-)
               dropping leading and trailing dashes.
+
+One must also configure the authtoken middleware in **/etc/nova/join.conf** as
+specified in the `Keystone middleware documentation`_.
+
+.. _`Keystone middleware documentation`: https://docs.openstack.org/developer/keystonemiddleware/middlewarearchitecture.html#configuration
 
 Notification listener Configuration
 ===================================
