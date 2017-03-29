@@ -148,7 +148,7 @@ This will:
 
 The nova-api service will need to be manually restarted.
 
-The installer takes the following options:
+The installer takes the following options::
 
     --hostname: use this value as the FQDN of the server.
     --user: user that the nova service runs as. This is needed to
@@ -166,23 +166,23 @@ Metadata REST Service Configuration
 The REST service is configured in /etc/nova/join.conf in the DEFAULT
 section.  It provides the following options:
 
-    - join_listen_port: The TCP port to listen on. Defaults to 9090.
-    - api_paste_config: The paste configuration file to use.
-    - debug: Enable additional debugging output. Default is False.
-    - auth_strategy: The authentication strategy to use
-    - url: The JSON RPC URL to an IPA server, e.g. https://ipa.host.domain/ipa/json
-    - keytab: The Kerberos keytab containing the credentails for the user
-              nova will use to manage hosts. The default is /etc/krb5.keytab.
-    - domain: The domain to associate with IPA hosts.
-    - connect_retries: The number of times to attempt to contact the IPA
-              server before failing.
-    - project_subdomain: Use the project the instance is created in as the
-              subddomain for the fully-qualified domain name. For example if
-              the project is admin and the domain is example.com and the
-              instance name is test the FQDN will be test.admin.example.com
-    - normalize_project: A project name can contain values not allowed as a
-              DNS label. This will convert invalid values to a dash (-)
-              dropping leading and trailing dashes.
+- join_listen_port: The TCP port to listen on. Defaults to 9090.
+- api_paste_config: The paste configuration file to use.
+- debug: Enable additional debugging output. Default is False.
+- auth_strategy: The authentication strategy to use
+- url: The JSON RPC URL to an IPA server, e.g. https://ipa.host.domain/ipa/json
+- keytab: The Kerberos keytab containing the credentails for the user
+          nova will use to manage hosts. The default is /etc/krb5.keytab.
+- domain: The domain to associate with IPA hosts.
+- connect_retries: The number of times to attempt to contact the IPA
+          server before failing.
+- project_subdomain: Use the project the instance is created in as the
+          subddomain for the fully-qualified domain name. For example if
+          the project is admin and the domain is example.com and the
+          instance name is test the FQDN will be test.admin.example.com
+- normalize_project: A project name can contain values not allowed as a
+          DNS label. This will convert invalid values to a dash (-)
+          dropping leading and trailing dashes.
 
 One must also configure the authtoken middleware in **/etc/nova/join.conf** as
 specified in the `Keystone middleware documentation`_.
@@ -239,17 +239,15 @@ The REST novajoin-server service logs by default to
 The notification listener service novajoin-notify logs by default to
 /var/log/novajoin/novajoin-notify.log
 
-A logrotate script for this is:
+A logrotate script for this is::
 
-```
-/var/log/novajoin/*log {
-    weekly
-    rotate 14
-    size 10M
-    missingok
-    compress
-}
-```
+    /var/log/novajoin/*log {
+        weekly
+        rotate 14
+        size 10M
+        missingok
+        compress
+    }
 
 
 Design
@@ -293,9 +291,10 @@ The novajoin-notify service waits for notifications from nova that an
 instance deletion has been completed. If that instance or image has the
 property ipa_enroll=True then the host is removed from IPA.
 
-*In the case of config drive the metadata is retrieved and attached
-to the instance at boot time. cloud-init detects the config drive and
-reads its metadata from there.
+.. note::
+   In the case of config drive the metadata is retrieved and attached
+   to the instance at boot time. cloud-init detects the config drive and
+   reads its metadata from there.
 
 
 Origin
