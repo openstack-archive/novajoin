@@ -1,10 +1,10 @@
 Welcome to the novajoin documentation!
 ======================================
 
+.. include:: ../../README.rst
+
 Table of Contents
 =================
-
-.. include::../../README.md
 
 .. toctree::
     :maxdepth: 2
