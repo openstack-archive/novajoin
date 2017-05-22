@@ -195,6 +195,41 @@ class JoinTest(test.TestCase):
         # because in all likelihood the keytab cannot be read (and
         # probably doesn't exist. This can be ignored.
 
+    @mock.patch('novajoin.keystone_client.get_project_name')
+    @mock.patch('novajoin.join.get_instance')
+    @mock.patch('novajoin.join.get_default_image_service')
+    @mock.patch('novajoin.util.get_domain')
+    def test_valid_hostclass_request(self, mock_get_domain, mock_get_image,
+                                     mock_get_instance,
+                                     mock_get_project_name):
+        mock_get_image.return_value = FakeImageService()
+        mock_get_instance.return_value = fake.fake_instance
+        mock_get_domain.return_value = "test"
+        mock_get_project_name.return_value = "test"
+
+        body = {"metadata": {"ipa_enroll": "True"},
+                "instance-id": fake.INSTANCE_ID,
+                "project-id": fake.PROJECT_ID,
+                "image-id": fake.IMAGE_ID,
+                "hostname": "test"}
+        req = fakes.HTTPRequest.blank('/v1')
+        req.method = 'POST'
+        req.content_type = "application/json"
+        req.body = jsonutils.dump_as_bytes(body)
+        res_dict = self.join_controller.create(req, body)
+
+        # There should be no OTP because IPA shouldn't be
+        # configured, but we'll handle both cases.
+        if res_dict.get('ipaotp'):
+            self.assertThat(res_dict.get('ipaotp'),
+                            MatchesRegex('^[a-z0-9]{32}'))
+            self.assertEqual(len(res_dict.get('ipaotp', 0)), 32)
+        self.assertEqual(res_dict.get('hostname'), 'test.test')
+
+        # Note that on failures this will generate to stdout a Krb5Error
+        # because in all likelihood the keytab cannot be read (and
+        # probably doesn't exist. This can be ignored.
+
     @mock.patch('novajoin.join.get_instance')
     @mock.patch('novajoin.join.get_default_image_service')
     def test_invalid_instance_id(self, mock_get_image, mock_get_instance):
@@ -205,6 +240,36 @@ class JoinTest(test.TestCase):
         body = {"metadata": {"ipa_enroll": "True"},
                 "instance-id": "invalid",
                 "project-id": fake.PROJECT_ID,
+                "image-id": fake.IMAGE_ID,
+                "hostname": "test"}
+        req = fakes.HTTPRequest.blank('/v1')
+        req.method = 'POST'
+        req.content_type = "application/json"
+        req.body = jsonutils.dump_as_bytes(body)
+
+        # Not using assertRaises because the exception is wrapped as
+        # a Fault
+        try:
+            self.join_controller.create(req, body)
+        except Fault as fault:
+            assert fault.status_int == 400
+        else:
+            assert(False)
+
+    @mock.patch('novajoin.join.get_instance')
+    @mock.patch('novajoin.join.get_default_image_service')
+    @mock.patch('novajoin.keystone_client.get_project_name')
+    @mock.patch('novajoin.util.get_domain')
+    def test_invalid_project_id(self, mock_get_domain, mock_get_project_name,
+                                mock_get_image, mock_get_instance):
+        mock_get_image.return_value = FakeImageService()
+        mock_get_instance.return_value = None
+        mock_get_project_name.return_value = None
+        mock_get_domain.return_value = "test"
+
+        body = {"metadata": {"ipa_enroll": "True", "ipa_hostclass": "foo"},
+                "instance-id": fake.INSTANCE_ID,
+                "project-id": "invalid",
                 "image-id": fake.IMAGE_ID,
                 "hostname": "test"}
         req = fakes.HTTPRequest.blank('/v1')
