@@ -28,7 +28,7 @@ service_opts = [
     cfg.PortOpt('join_listen_port',
                 default=9090,
                 help='Port to listen on'),
-    cfg.StrOpt('keytab', default='/etc/nova/krb5.keytab',
+    cfg.StrOpt('keytab', default='/etc/novajoin/krb5.keytab',
                help='Kerberos client keytab file'),
     cfg.StrOpt('domain', default=None,
                help='Domain for new hosts'),
@@ -88,14 +88,14 @@ def find_config_files():
 
       ~/.join/join.conf
       ~/join.conf
-      /etc/nova/join.conf
+      /etc/novajoin/join.conf
       /etc/join.conf
       /etc/join/join.conf
     """
     cfg_dirs = [
         _fixpath('~/.join/'),
         _fixpath('~'),
-        '/etc/nova/',
+        '/etc/novajoin/',
         '/etc'
         '/etc/join/'
     ]

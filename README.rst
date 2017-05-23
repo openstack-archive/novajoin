@@ -104,7 +104,7 @@ novajoin REST service and enable notifications in
     notify_on_state_change = vm_state
 
 Novajoin enables keystone authentication by default, as seen in
-**/etc/nova/join-api-paste.ini**. So credentials need to be set for nova to be
+**/etc/novajoin/join-api-paste.ini**. So credentials need to be set for nova to be
 able to communicate with novajoin. This we can set in the
 ``[vendordata_dynamic_auth]`` section of **/etc/nova/nova.conf**::
 
@@ -139,7 +139,7 @@ so that the glance metadata upload can occur.
 
 This will:
 
-- copy the cloud-init and enrollment script to **/etc/nova**
+- copy the cloud-init and enrollment script to **/etc/novajoin**
 - obtain a keytab to be used to authenticate against IPA when
   doing host management
 - call out to a script to create the requisite permissions and
@@ -163,7 +163,7 @@ The installer takes the following options::
 Metadata REST Service Configuration
 ===================================
 
-The REST service is configured in **/etc/nova/join.conf** in the DEFAULT
+The REST service is configured in **/etc/novajoin/join.conf** in the DEFAULT
 section.  It provides the following options:
 
 - join_listen_port: The TCP port to listen on. Defaults to 9090.
@@ -184,7 +184,7 @@ section.  It provides the following options:
           DNS label. This will convert invalid values to a dash (-)
           dropping leading and trailing dashes.
 
-One must also configure the authtoken middleware in **/etc/nova/join.conf** as
+One must also configure the authtoken middleware in **/etc/novajoin/join.conf** as
 specified in the `Keystone middleware documentation`_.
 
 .. _`Keystone middleware documentation`: https://docs.openstack.org/developer/keystonemiddleware/middlewarearchitecture.html#configuration
