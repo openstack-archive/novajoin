@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 import sys
 
 from novajoin import config
@@ -103,6 +104,8 @@ def process_launcher():
 
 
 def main():
+    # rcrit: work around "PKCS #11 module returned CKR_DEVICE_ERROR"
+    os.environ['NSS_STRICT_NOFORK'] = 'DISABLED'
 
     keystone_client.register_keystoneauth_opts(CONF)
     CONF(sys.argv[1:], version='1.0.12',
