@@ -139,8 +139,8 @@ def install(opts):
     config.set('keystone_authtoken', 'username', 'nova')
     config.set('keystone_authtoken', 'auth_url', opts.keystone_auth_url)
     config.set('keystone_authtoken', 'auth_type', 'password')
-    config.set('keystone_authtoken', 'project_domain_name, 'default')
-    config.set('keystone_authtoken', 'user_domain_id, 'default')
+    config.set('keystone_authtoken', 'project_domain_name', 'default')
+    config.set('keystone_authtoken', 'user_domain_id', 'default')
 
 
     with open(JOINCONF, 'w') as f:
@@ -184,8 +184,8 @@ def install(opts):
     config.set('vendordata_dynamic_auth', 'username', 'nova')
     config.set('vendordata_dynamic_auth', 'auth_url', opts.keystone_auth_url)
     config.set('vendordata_dynamic_auth', 'auth_type', 'password')
-    config.set('vendordata_dynamic_auth', 'project_domain_name, 'default')
-    config.set('vendordata_dynamic_auth', 'user_domain_id, 'default')
+    config.set('vendordata_dynamic_auth', 'project_domain_name', 'default')
+    config.set('vendordata_dynamic_auth', 'user_domain_id', 'default')
 
     try:
         transport_url = config.get('DEFAULT', 'transport_url')
