@@ -177,7 +177,14 @@ class JoinController(Controller):
 
         hostclass = metadata.get('ipa_hostclass')
         if hostclass:
+            # Only look up project_name when hostclass is requested to
+            # save a round-trip with Keystone.
             project_name = keystone_client.get_project_name(project_id)
+            if project_name is None:
+                msg = 'No such project-id, %s' % project_id
+                LOG.error(msg)
+                raise base.Fault(webob.exc.HTTPBadRequest(explanation=msg))
+
             allowed_hostclass = self._get_allowed_hostclass(project_name)
             LOG.debug('hostclass %s, allowed_classes %s' %
                       (hostclass, allowed_hostclass))
