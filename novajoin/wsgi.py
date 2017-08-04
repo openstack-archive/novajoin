@@ -108,7 +108,7 @@ def main():
     os.environ['NSS_STRICT_NOFORK'] = 'DISABLED'
 
     keystone_client.register_keystoneauth_opts(CONF)
-    CONF(sys.argv[1:], version='1.0.13',
+    CONF(sys.argv[1:], version='1.0.14',
          default_config_files=config.find_config_files())
     log.setup(CONF, 'join')
     launcher = process_launcher()
