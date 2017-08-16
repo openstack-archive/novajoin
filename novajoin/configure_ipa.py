@@ -273,6 +273,8 @@ class NovajoinRole(object):
         if self.ccache_name:
             current_ccache = os.environ.get('KRB5CCNAME')
             os.environ['KRB5CCNAME'] = self.ccache_name
+        else:
+            current_ccache = None
 
         try:
             if os.path.exists(self.keytab):
