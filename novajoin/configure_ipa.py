@@ -24,19 +24,29 @@ import sys
 import tempfile
 
 from ipalib import api
-from ipalib import certstore
 from ipalib import errors
 from ipalib import x509
 from ipapython import certdb
 from ipapython import ipaldap
 from ipapython.ipautil import CalledProcessError
 from ipapython.ipautil import ipa_generate_password
-from ipapython.ipautil import kinit_password
 from ipapython.ipautil import realm_to_suffix
 from ipapython.ipautil import run
 from ipapython.ipautil import user_input
 from ipapython.ipautil import write_tmp_file
 from novajoin.errors import ConfigurationError
+
+try:
+    from ipalib import certstore
+except ImportError:
+    # The import moved in freeIPA 4.5.0
+    from ipalib.install import certstore
+
+try:
+    from ipapython.ipautil import kinit_password
+except ImportError:
+    # The import moved in freeIPA 4.5.0
+    from ipalib.install.kinit import kinit_password
 
 import nss.nss as nss
 

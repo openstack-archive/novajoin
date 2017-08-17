@@ -25,7 +25,7 @@ import time
 import copy
 import tempfile
 import getpass
-from ipapython.ipautil import run, kinit_password, user_input
+from ipapython.ipautil import run, user_input
 from ipalib import api
 from ipalib import errors
 from novajoin.errors import ConfigurationError
@@ -35,6 +35,12 @@ from six.moves.configparser import SafeConfigParser, NoOptionError
 from subprocess import CalledProcessError
 from string import Template
 from urllib3.util import parse_url
+
+try:
+    from ipapython.ipautil import kinit_password
+except ImportError:
+    # The import moved in freeIPA 4.5.0
+    from ipalib.install.kinit import kinit_password
 
 
 DATADIR = '/usr/share/novajoin'
