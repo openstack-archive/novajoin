@@ -24,7 +24,11 @@ import sys
 import tempfile
 
 from ipalib import api
-from ipalib import certstore
+try:
+    from ipalib import certstore
+except ImportError:
+    # The import moved in freeIPA 4.5.0
+    from ipalib.install import certstore
 from ipalib import errors
 from ipalib import x509
 from ipapython import certdb
