@@ -229,7 +229,7 @@ class NotificationEndpoint(object):
 
 def main():
     register_keystoneauth_opts(CONF)
-    CONF(sys.argv[1:], version='1.0.14',
+    CONF(sys.argv[1:], version='1.0.15',
          default_config_files=config.find_config_files())
     logging.setup(CONF, 'join')
 
