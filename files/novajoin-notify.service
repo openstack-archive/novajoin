@@ -1,0 +1,12 @@
+[Unit]
+Description=OpenStack Nova IPA Notification Service
+After=syslog.target network.target
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+User=nova
+ExecStart=/usr/sbin/novajoin-notify
+
+[Install]
+WantedBy=multi-user.target

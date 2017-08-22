@@ -1,0 +1,14 @@
+[Unit]
+Description=OpenStack Nova IPA Join Service
+After=syslog.target network.target
+
+[Service]
+Type=simple
+NotifyAccess=all
+TimeoutStartSec=0
+Restart=always
+User=nova
+ExecStart=/usr/sbin/novajoin-server
+
+[Install]
+WantedBy=multi-user.target
