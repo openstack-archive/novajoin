@@ -123,6 +123,9 @@ def install(opts):
     config.set('DEFAULT',
                'api_paste_config',
                '/etc/novajoin/join-api-paste.ini')
+    config.set('DEFAULT',
+               'log_dir',
+               '/var/log/novajoin')
 
     if not config.has_section('service_credentials'):
         config.add_section('service_credentials')
