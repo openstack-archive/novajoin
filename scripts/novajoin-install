@@ -122,7 +122,7 @@ def install(opts):
     config.set('DEFAULT', 'domain', api.env.domain)  # pylint: disable=no-member
     config.set('DEFAULT',
                'api_paste_config',
-               '/etc/nova/join-api-paste.ini')
+               '/etc/novajoin/join-api-paste.ini')
 
     if not config.has_section('service_credentials'):
         config.add_section('service_credentials')
