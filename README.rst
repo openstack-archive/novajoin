@@ -49,9 +49,9 @@ Configuration
 
 There are two installation scenarios:
 
-1. Triple-O Quickstart
+1. Triple-O Quickstart (Pike and above)
 
-This is primary use case to date. In this scenario the heat and
+This is primary use-case to date. In this scenario the heat and
 puppet code manages most of the configuration. There is even some
 code to configure everything if you're willing to provide the
 IPA admin password.
@@ -78,10 +78,13 @@ service principal and configure and start the services. In OOOQ this is
 done by setting enable_tls_everywhere to true and and prepare_novajoin
 to false.
 
+novajoin-ipa-setup will configure the project name to be service. This
+may not match your installation. Adjust as needed.
+
 2. Manual setup
 
 It is also possible to setup novajoin within an existing OpenStack
-deployment (I do this in devstack, for example).
+deployment (I've done this in devstack, for example).
 
 The machine running the novajoin service needs to be enrolled
 as an IPA client.
@@ -93,19 +96,21 @@ nova currently needs to be manually configured to enable the
 novajoin REST service and enable notifications in
 **/etc/nova/nova.conf**::
 
+    [api]
     vendordata_providers = StaticJSON, DynamicJSON
     vendordata_dynamic_targets = 'join@http://127.0.0.1:9090/v1/'
     vendordata_dynamic_connect_timeout = 5
     vendordata_dynamic_read_timeout = 30
-    vendordata_jsonfile_path = /etc/nova/cloud-config-novajoin.json
+    vendordata_jsonfile_path = /etc/novajoin/cloud-config-novajoin.json
 
+    [oslo_messaging_notifications]
     notification_driver = messaging
     notification_topic = notifications,novajoin_notifications
     notify_on_state_change = vm_state
 
 Novajoin enables keystone authentication by default, as seen in
-**/etc/novajoin/join-api-paste.ini**. So credentials need to be set for nova to be
-able to communicate with novajoin. This we can set in the
+**/etc/novajoin/join-api-paste.ini**. So credentials need to be set for
+nova to be able to communicate with novajoin. This we can set in the
 ``[vendordata_dynamic_auth]`` section of **/etc/nova/nova.conf**::
 
     [vendordata_dynamic_auth]
@@ -157,7 +162,8 @@ The installer takes the following options::
                  get the keytab, etc. Default is the IPA admin account.
     --password: the password for the principal. If this is not set the the
                 password is obtained interactively
-    --password-file: the file containing the password for the principal.
+    --password-file: the file containing the password for the principal rather
+                     than passing it interactively or via the command-line
 
 
 Metadata REST Service Configuration
@@ -293,6 +299,45 @@ property ipa_enroll=True then the host is removed from IPA.
    reads its metadata from there.
 
 
+Packstack
+=========
+
+Some people have had difficulties deploying novajoin within Packstack.
+Here is how I did it on RHEL 7.4 using RHOSP 11 (Ocata).
+
+Install packstack
+
+    # packstack <your_favorite_options>
+
+Configure host as an IPA client
+
+    # ipa-client-install ...
+
+Get the [keystone_authtoken] section from /etc/nova/nova.conf and call
+the novajoin installer
+
+    # novajoin-install --user nova --keystone-auth-url <auth-url> \
+      --nova-password <password> --project services
+
+Add the novajoin user and group
+
+    # groupadd -r novajoin --gid 968
+    # useradd -u 968 -r -g novajoin -G novajoin -d /var/lib/novajoin \
+      -s /sbin/nologin -c "OpenStack novajoin Daemons" novajoin
+
+Create the log directory
+
+    # mkdir /var/log/novajoin
+    # chown novajoin:novajoin /var/log/novajoin
+
+Copy the systemd unit files
+
+    # cp /usr/share/novajoin/*.service /usr/lib/systemd/system/
+    # systemd daemon-reload
+
+Restart the necessary services
+
+    # systemctl restart openstack-nova-api novajoin-server novajoin-notify
 Origin
 ======
 
