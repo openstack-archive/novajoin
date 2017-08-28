@@ -1,0 +1,9 @@
+Code-Review+2: Juan Antonio Osorio Robles <jaosorior@redhat.com>
+Code-Review+2: Rob Crittenden <rcritten@redhat.com>
+Workflow+1: Rob Crittenden <rcritten@redhat.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Mon, 28 Aug 2017 19:46:36 +0000
+Reviewed-on: https://review.openstack.org/471204
+Project: openstack/novajoin
+Branch: refs/heads/master
