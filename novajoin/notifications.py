@@ -233,7 +233,7 @@ def main():
          default_config_files=config.find_config_files())
     logging.setup(CONF, 'join')
 
-    transport = oslo_messaging.get_transport(CONF)
+    transport = oslo_messaging.get_notification_transport(CONF)
     targets = [oslo_messaging.Target(topic=CONF.notifications_topic)]
     endpoints = [NotificationEndpoint()]
 
