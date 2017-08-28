@@ -7,8 +7,8 @@ Type=simple
 NotifyAccess=all
 TimeoutStartSec=0
 Restart=always
-User=nova
-ExecStart=/usr/sbin/novajoin-server
+User=novajoin
+ExecStart=/usr/bin/novajoin-server
 
 [Install]
 WantedBy=multi-user.target
