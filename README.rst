@@ -222,7 +222,7 @@ Sample usage from the command-line::
     uid=#########(admin) gid=#########(admins) groups=#########(admins)
 
 The curl output will include a "join" element in the returned dict.
-Thsi will contain a hostname and ipaotp value. These are used for
+This will contain a hostname and ipaotp value. These are used for
 enrollment with ipa-client-install via::
 
     # ipa-client-install -U -w <ipaotp> --hostname <hostname>
