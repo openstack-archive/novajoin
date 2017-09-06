@@ -163,14 +163,20 @@ class JoinTest(test.TestCase):
         else:
             assert(False)
 
+    @mock.patch('novajoin.ipa.SafeConfigParser')
     @mock.patch('novajoin.join.get_instance')
     @mock.patch('novajoin.join.get_default_image_service')
     @mock.patch('novajoin.util.get_domain')
     def test_valid_request(self, mock_get_domain, mock_get_image,
-                           mock_get_instance):
+                           mock_get_instance, mock_conf_parser):
         mock_get_image.return_value = FakeImageService()
         mock_get_instance.return_value = fake.fake_instance
         mock_get_domain.return_value = "test"
+
+        mock_conf_parser_instance = mock.MagicMock()
+        mock_conf_parser_instance.get = mock.Mock(
+            side_effect=["novajoin", "REALM"])
+        mock_conf_parser.return_value = mock_conf_parser_instance
 
         body = {"metadata": {"ipa_enroll": "True"},
                 "instance-id": fake.INSTANCE_ID,
@@ -190,22 +196,30 @@ class JoinTest(test.TestCase):
                             MatchesRegex('^[a-z0-9]{32}'))
             self.assertEqual(len(res_dict.get('ipaotp', 0)), 32)
         self.assertEqual(res_dict.get('hostname'), 'test.test')
+        self.assertEqual(res_dict.get('krb_realm'), 'REALM')
 
         # Note that on failures this will generate to stdout a Krb5Error
         # because in all likelihood the keytab cannot be read (and
         # probably doesn't exist. This can be ignored.
 
+    @mock.patch('novajoin.ipa.SafeConfigParser')
     @mock.patch('novajoin.keystone_client.get_project_name')
     @mock.patch('novajoin.join.get_instance')
     @mock.patch('novajoin.join.get_default_image_service')
     @mock.patch('novajoin.util.get_domain')
     def test_valid_hostclass_request(self, mock_get_domain, mock_get_image,
                                      mock_get_instance,
-                                     mock_get_project_name):
+                                     mock_get_project_name,
+                                     mock_conf_parser):
         mock_get_image.return_value = FakeImageService()
         mock_get_instance.return_value = fake.fake_instance
         mock_get_domain.return_value = "test"
         mock_get_project_name.return_value = "test"
+
+        mock_conf_parser_instance = mock.MagicMock()
+        mock_conf_parser_instance.get = mock.Mock(
+            side_effect=["novajoin", "REALM"])
+        mock_conf_parser.return_value = mock_conf_parser_instance
 
         body = {"metadata": {"ipa_enroll": "True"},
                 "instance-id": fake.INSTANCE_ID,
@@ -225,6 +239,7 @@ class JoinTest(test.TestCase):
                             MatchesRegex('^[a-z0-9]{32}'))
             self.assertEqual(len(res_dict.get('ipaotp', 0)), 32)
         self.assertEqual(res_dict.get('hostname'), 'test.test')
+        self.assertEqual(res_dict.get('krb_realm'), 'REALM')
 
         # Note that on failures this will generate to stdout a Krb5Error
         # because in all likelihood the keytab cannot be read (and
