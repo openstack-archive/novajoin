@@ -19,6 +19,7 @@ import os
 import shutil
 import sys
 from ipalib import api, errors
+from ipapython import version
 from ipapython.ipa_log_manager import log_mgr
 from novajoin import configure_ipa
 from novajoin.errors import ConfigurationError
@@ -87,16 +88,26 @@ if __name__ == '__main__':
                 os.remove(krb5_conf)
 
     nss_db = None
+    cafile = None
 
     if precreate_opts_specified:
-        nss_db = novajoin.create_nssdb(opts.server, opts.realm)
-    args['nss_dir'] = unicode(nss_db.secdir)
+        # IPA v4.5.0 switched client from NSS to OpenSSL
+        if version.NUM_VERSION >= 40500:
+            cafile = novajoin.create_cafile(opts.server, opts.realm)
+            # Workaround for https://pagure.io/freeipa/issue/7145
+            args['tls_ca_cert'] = cafile.decode('UTF-8')
+        else:
+            nss_db = novajoin.create_nssdb(opts.server, opts.realm)
+            args['nss_dir'] = nss_db.secdir.decode('UTF-8')
+
     api.bootstrap(**args)
     api.finalize()
 
     logging.debug('Connect to IPA backend')
     try:
-        if nss_db:
+        if cafile:
+            api.Backend.rpcclient.connect(ca_certfile=cafile)
+        elif nss_db:
             api.Backend.rpcclient.connect(nss_dir=nss_db.secdir)
         else:
             api.Backend.rpcclient.connect()
@@ -109,6 +120,8 @@ if __name__ == '__main__':
 
     if nss_db:
         nss_db.close()
+    if cafile:
+        os.remove(cafile)
     if krb5_conf:
         os.remove(krb5_conf)
     if ccache_dir:
