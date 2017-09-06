@@ -202,6 +202,8 @@ class JoinController(Controller):
 
         data['ipaotp'] = ipaotp
         data['hostname'] = get_fqdn(hostname_short, project_name)
+        _, realm = self.ipaclient.get_host_and_realm()
+        data['krb_realm'] = realm
 
         try:
             res = self.ipaclient.add_host(data['hostname'], ipaotp,
