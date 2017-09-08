@@ -34,6 +34,7 @@ from ipapython.ipautil import realm_to_suffix
 from ipapython.ipautil import run
 from ipapython.ipautil import user_input
 from ipapython.ipautil import write_tmp_file
+from ipapython import version
 from novajoin.errors import ConfigurationError
 
 try:
@@ -47,6 +48,9 @@ try:
 except ImportError:
     # The import moved in freeIPA 4.5.0
     from ipalib.install.kinit import kinit_password
+
+if version.NUM_VERSION >= 40500:
+    from cryptography.hazmat.primitives import serialization
 
 import nss.nss as nss
 
@@ -135,12 +139,21 @@ class NovajoinRole(object):
 
     def _get_ca_certs(self, server, realm):
         basedn = realm_to_suffix(realm)
-        try:
-            conn = ipaldap.IPAdmin(server, sasl_nocanon=True)
-            conn.do_sasl_gssapi_bind()
-            certs = certstore.get_ca_certs(conn, basedn, realm, False)
-        except Exception as e:
-            raise ConfigurationError("get_ca_certs_from_ldap() error: %s" % e)
+        if version.NUM_VERSION >= 40500:
+            ldap_uri = ipaldap.get_ldap_uri(server)
+            try:
+                conn = ipaldap.LDAPClient(ldap_uri, sasl_nocanon=True)
+                conn.gssapi_bind()
+                certs = certstore.get_ca_certs(conn, basedn, realm, False)
+            except Exception as e:
+                raise ConfigurationError("get_ca_certs() error: %s" % e)
+        else:
+            try:
+                conn = ipaldap.IPAdmin(server, sasl_nocanon=True)
+                conn.do_sasl_gssapi_bind()
+                certs = certstore.get_ca_certs(conn, basedn, realm, False)
+            except Exception as e:
+                raise ConfigurationError("get_ca_certs() error: %s" % e)
 
         certs = [x509.load_certificate(c[0], x509.DER) for c in certs
                  if c[2] is not False]
@@ -148,6 +161,13 @@ class NovajoinRole(object):
         return certs
 
     def create_nssdb(self, server, realm):
+        """Retrieve IPA CA certificate chain to NSS database.
+
+        Retrieve the CA cert chain from IPA and add it to a
+        temporary NSS database and return the path to it.
+
+        NOTE: For IPA v4.4.0.
+        """
         nss.nss_init_nodb()
         nss_db = certdb.NSSDatabase()
 
@@ -165,6 +185,26 @@ class NovajoinRole(object):
                 'Failed to add CA to temporary NSS database.')
 
         return nss_db
+
+    def create_cafile(self, server, realm):
+        """Retrieve IPA CA certificate chain to a file
+
+        Retrieve the CA cert chain from IPA and add it to a
+        temporary file and return the name of the file.
+
+        The caller is responsible for removing the temporary file.
+
+        NOTE: For IPA v4.5.0+
+        """
+        (cafile_fd, cafile_name) = tempfile.mkstemp()
+        os.close(cafile_fd)
+
+        ca_certs = self._get_ca_certs(server, realm)
+        ca_certs = [cert.public_bytes(serialization.Encoding.PEM)
+                    for cert in ca_certs]
+        x509.write_certificate_list(ca_certs, cafile_name)
+
+        return cafile_name
 
     def kinit(self, principal, realm, password, config=None):
         ccache_dir = tempfile.mkdtemp(prefix='krbcc')
@@ -262,7 +302,10 @@ class NovajoinRole(object):
 
     def _add_host(self, filename):
         logging.debug('Add host %s', self.hostname)
-        otp = ipa_generate_password(allowed_chars)
+        if version.NUM_VERSION >= 40500:
+            otp = ipa_generate_password(special=None)
+        else:
+            otp = ipa_generate_password(allowed_chars)
 
         self._call_ipa(u'host_add', six.text_type(self.hostname),
                        {'description': u'Undercloud host',
