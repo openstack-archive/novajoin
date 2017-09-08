@@ -18,13 +18,9 @@ from novajoin.errors import ConfigurationError
 from oslo_config import cfg
 from oslo_log import log as logging
 
-try:
+from novajoin.ipa import ipalib_imported
+if ipalib_imported:
     from ipalib import api
-    ipalib_imported = True
-except ImportError:
-    # ipalib/ipapython are not available in PyPi yet, don't make it
-    # a showstopper for the tests.
-    ipalib_imported = False
 
 CONF = cfg.CONF
 
