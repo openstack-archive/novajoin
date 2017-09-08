@@ -20,12 +20,17 @@ try:
     from gssapi.exceptions import GSSError
     from ipalib import api
     from ipalib import errors
-    from ipapython.ipautil import kinit_keytab
     ipalib_imported = True
 except ImportError:
     # ipalib/ipapython are not available in PyPy yet, don't make it
     # a showstopper for the tests.
     ipalib_imported = False
+
+try:
+    from ipapython.ipautil import kinit_keytab
+except ImportError:
+    # The import moved in freeIPA 4.5.0
+    from ipalib.install.kinit import kinit_keytab
 
 from novajoin.util import get_domain
 from oslo_config import cfg
