@@ -8,13 +8,13 @@ Required dependencies
 ~~~~~~~~~~~~~~~~~~~~~
 ::
 
-    yum -y install {free}ipa-client
+    yum install {free}ipa-client
 
 Development or integration testing dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ::
 
-    yum -y install python-setuptools
+    yum install python-setuptools
     easy_install pip
     pip install tox
 
@@ -24,13 +24,13 @@ Required dependencies
 ~~~~~~~~~~~~~~~~~~~~~
 ::
 
-    apt-get -y install freeipa-client
+    apt-get install freeipa-client
 
 Development or integration testing dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ::
 
-    apt-get -y install python-pip
+    apt-get install python-pip
     pip install tox
 
 Installing novajoin from trunk source
