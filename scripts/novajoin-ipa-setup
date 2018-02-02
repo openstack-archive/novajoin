@@ -83,6 +83,9 @@ if __name__ == '__main__':
         try:
             ccache_dir = novajoin.kinit(opts.principal, opts.realm,
                                         opts.password, krb5_conf)
+            # We use the ccache that we just created inside the kinit
+            # function.
+            os.environ['KRB5CCNAME'] = novajoin.ccache_name
         except ConfigurationError:
             if krb5_conf:
                 os.remove(krb5_conf)
