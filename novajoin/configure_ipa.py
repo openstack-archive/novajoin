@@ -92,7 +92,7 @@ class NovajoinRole(object):
     already exists.
     """
 
-    def __init__(self, keytab='/etc/nova/krb5.keytab', user='nova',
+    def __init__(self, keytab='/etc/novajoin/krb5.keytab', user='novajoin',
                  hostname=None):
         self.keytab = keytab
         self.user = user
