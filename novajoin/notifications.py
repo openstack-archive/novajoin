@@ -56,11 +56,7 @@ def neutronclient():
 class NotificationEndpoint(object):
 
     filter_rule = oslo_messaging.notify.filter.NotificationFilter(
-        publisher_id='^compute.*|^network.*',
-        event_type='^compute.instance.create.end|'
-                   '^compute.instance.delete.end|'
-                   '^network.floating_ip.(dis)?associate|'
-                   '^floatingip.update.end')
+        publisher_id='^compute.*|^network.*')
 
     def _generate_hostname(self, hostname):
         # FIXME: Don't re-calculate the hostname, fetch it from somewhere
