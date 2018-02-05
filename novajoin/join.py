@@ -78,9 +78,9 @@ class Controller(object):
 
 class JoinController(Controller):
 
-    def __init__(self):
+    def __init__(self, ipaclient=IPAClient()):
         super(JoinController, self).__init__(None)
-        self.ipaclient = IPAClient()
+        self.ipaclient = ipaclient
 
     def _get_allowed_hostclass(self, project_name):
         """Get the allowed list of hostclass from configuration."""

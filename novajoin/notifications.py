@@ -24,9 +24,11 @@ import time
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 from novajoin import config
+from novajoin import join
 from novajoin.ipa import IPAClient
 from novajoin.keystone_client import get_session
 from novajoin.keystone_client import register_keystoneauth_opts
+from novajoin.nova import get_instance
 from novajoin.util import get_domain
 from novajoin.util import get_fqdn
 from oslo_log import log as logging
@@ -57,6 +59,7 @@ class NotificationEndpoint(object):
         publisher_id='^compute.*|^network.*',
         event_type='^compute.instance.create.end|'
                    '^compute.instance.delete.end|'
+                   '^compute.instance.update|'
                    '^network.floating_ip.(dis)?associate|'
                    '^floatingip.update.end')
 
@@ -82,6 +85,41 @@ class NotificationEndpoint(object):
             hostname = self._generate_hostname(payload.get('hostname'))
             instance_id = payload.get('instance_id')
             LOG.info("Add new host %s (%s)", instance_id, hostname)
+        elif event_type == 'compute.instance.update':
+            join_controller = join.JoinController(ipaclient)
+            hostname_short = payload.get('hostname')
+            instance_id = payload.get('instance_id')
+            payload_metadata = payload.get('metadata')
+            image_metadata = payload.get('image_meta')
+
+            hostname = self._generate_hostname(hostname_short)
+
+            enroll = payload_metadata.get('ipa_enroll', '')
+            image_enroll = image_metadata.get('ipa_enroll', '')
+            if enroll.lower() != 'true' and image_enroll.lower() != 'true':
+                LOG.info('IPA enrollment not requested, skipping update of %s',
+                         hostname)
+                return
+            # Ensure this instance exists in nova and retrieve the
+            # name of the user that requested it.
+            instance = get_instance(instance_id)
+            if instance is None:
+                msg = 'No such instance-id, %s' % instance_id
+                LOG.error(msg)
+                return
+
+            ipaclient.start_batch_operation()
+            # key-per-service
+            managed_services = [
+                payload_metadata[key] for key in payload_metadata.keys()
+                if key.startswith('managed_service_')]
+            if managed_services:
+                join_controller.handle_services(hostname, managed_services)
+            # compact json format
+            if 'compact_services' in payload_metadata:
+                join_controller.handle_compact_services(
+                    hostname_short, payload_metadata.get('compact_services'))
+            ipaclient.flush_batch_operation()
         elif event_type == 'compute.instance.delete.end':
             hostname_short = payload.get('hostname')
             instance_id = payload.get('instance_id')
