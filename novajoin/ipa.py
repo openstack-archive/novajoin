@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import cachetools
 import os
 import time
 import uuid
@@ -226,6 +227,10 @@ class IPANovaJoinBase(object):
 
 class IPAClient(IPANovaJoinBase):
 
+    # TODO(jaosorior): Make the cache time and ttl configurable
+    host_cache = cachetools.TTLCache(maxsize=50, ttl=15)
+    service_cache = cachetools.TTLCache(maxsize=50, ttl=15)
+
     def add_host(self, hostname, ipaotp, metadata=None, image_metadata=None):
         """Add a host to IPA.
 
@@ -237,16 +242,25 @@ class IPAClient(IPANovaJoinBase):
         and if that fails due to NotFound the host is added.
         """
 
-        LOG.debug('In IPABuildInstance')
+        LOG.debug('Adding  ' + hostname + ' to IPA.')
 
         if not self._ipa_client_configured():
             LOG.debug('IPA is not configured')
             return False
 
+        # There's no use in doing any operations if ipalib hasn't been
+        # imported.
+        if not ipalib_imported:
+            return True
+
         if metadata is None:
             metadata = {}
         if image_metadata is None:
             image_metadata = {}
+
+        if hostname in self.host_cache:
+            LOG.debug('Host  ' + hostname + ' found in cache.')
+            return self.host_cache[hostname]
 
         params = [hostname]
 
@@ -273,16 +287,15 @@ class IPAClient(IPANovaJoinBase):
             'userpassword': ipaotp.decode('UTF-8'),
         }
 
-        if not ipalib_imported:
-            return True
-
         try:
             self._call_ipa('host_mod', *params, **modargs)
         except errors.NotFound:
             try:
                 self._call_ipa('host_add', *params, **hostargs)
-            except (errors.DuplicateEntry, errors.ValidationError,
-                    errors.DNSNotARecordError):
+                self.host_cache[hostname] = True
+            except errors.DuplicateEntry:
+                self.host_cache[hostname] = True
+            except (errors.ValidationError, errors.DNSNotARecordError):
                 pass
         except errors.ValidationError:
             # Updating the OTP on an enrolled-host is not allowed
@@ -299,9 +312,13 @@ class IPAClient(IPANovaJoinBase):
         a virtual host (VIP).  These aliases are denoted 'subhosts',
         """
         LOG.debug('Adding subhost: ' + hostname)
-        params = [hostname]
-        hostargs = {'force': True}
-        self._add_batch_operation('host_add', *params, **hostargs)
+        if hostname not in self.host_cache:
+            params = [hostname]
+            hostargs = {'force': True}
+            self._add_batch_operation('host_add', *params, **hostargs)
+            self.host_cache[hostname] = True
+        else:
+            LOG.debug('subhost  ' + hostname + ' found in cache.')
 
     def delete_subhost(self, hostname, batch=True):
         """Delete a subhost from IPA.
@@ -324,10 +341,14 @@ class IPAClient(IPANovaJoinBase):
 
         if batch:
             self._add_batch_operation('host_del', *host_params, **host_kw)
+            if hostname in self.host_cache:
+                del self.host_cache[hostname]
             self._add_batch_operation('dnsrecord_del', *dns_params,
                                       **dns_kw)
         else:
             self._call_ipa('host_del', *host_params, **host_kw)
+            if hostname in self.host_cache:
+                del self.host_cache[hostname]
             try:
                 self._call_ipa('dnsrecord_del', *dns_params, **dns_kw)
             except (errors.NotFound, errors.ACIError):
@@ -336,7 +357,7 @@ class IPAClient(IPANovaJoinBase):
 
     def delete_host(self, hostname, metadata=None):
         """Delete a host from IPA and remove all related DNS entries."""
-        LOG.debug('In IPADeleteInstance')
+        LOG.debug('Deleting ' + hostname + ' from IPA.')
 
         if not self._ipa_client_configured():
             LOG.debug('IPA is not configured')
@@ -354,6 +375,8 @@ class IPAClient(IPANovaJoinBase):
         }
         try:
             self._call_ipa('host_del', *params, **kw)
+            if hostname in self.host_cache:
+                del self.host_cache[hostname]
         except (errors.NotFound, errors.ACIError):
             # Trying to delete a host that doesn't exist will raise an ACIError
             # to hide whether the entry exists or not
@@ -372,10 +395,19 @@ class IPAClient(IPANovaJoinBase):
             pass
 
     def add_service(self, principal):
-        LOG.debug('Adding service: ' + principal)
-        params = [principal]
-        service_args = {'force': True}
-        self._add_batch_operation('service_add', *params, **service_args)
+        if principal not in self.service_cache:
+            try:
+                (service, hostname, realm) = self.split_principal(principal)
+            except errors.MalformedServicePrincipal as e:
+                LOG.error("Unable to split principal %s: %s", principal, e)
+                raise
+            LOG.debug('Adding service: ' + principal)
+            params = [principal]
+            service_args = {'force': True}
+            self._add_batch_operation('service_add', *params, **service_args)
+            self.service_cache[principal] = [hostname]
+        else:
+            LOG.debug('Service ' + principal + ' found in cache.')
 
     def service_add_host(self, service_principal, host):
         """Add a host to a service.
@@ -388,23 +420,23 @@ class IPAClient(IPANovaJoinBase):
         the host or service as being "managed by" another host. For services
         in IPA this is done using the service-add-host API.
         """
-        LOG.debug('Adding principal ' + service_principal + ' to host ' + host)
-        params = [service_principal]
-        service_args = {'host': (host,)}
-        self._add_batch_operation('service_add_host', *params, **service_args)
+        if host not in self.service_cache.get(service_principal, []):
+            LOG.debug('Adding principal ' + service_principal +
+                      ' to host ' + host)
+            params = [service_principal]
+            service_args = {'host': (host,)}
+            self._add_batch_operation('service_add_host', *params,
+                                      **service_args)
+            self.service_cache[service_principal] = self.service_cache.get(
+                service_principal, []) + [host]
+        else:
+            LOG.debug('Host ' + host + ' managing ' + service_principal +
+                      ' found in cache.')
 
     def service_has_hosts(self, service_principal):
         """Return True if hosts other than parent manages this service"""
 
         LOG.debug('Checking if principal ' + service_principal + ' has hosts')
-        params = [service_principal]
-        service_args = {}
-        try:
-            result = self._call_ipa('service_show', *params, **service_args)
-        except errors.NotFound:
-            raise KeyError
-        serviceresult = result['result']
-
         try:
             (service, hostname, realm) = self.split_principal(
                 service_principal
@@ -412,6 +444,18 @@ class IPAClient(IPANovaJoinBase):
         except errors.MalformedServicePrincipal as e:
             LOG.error("Unable to split principal %s: %s", service_principal, e)
             raise
+        if service_principal in self.service_cache:
+            LOG.debug('principal ' + service_principal + ' found in cache')
+            return len([host for host in self.service_cache[service_principal]
+                        if host != hostname]) > 0
+
+        params = [service_principal]
+        service_args = {}
+        try:
+            result = self._call_ipa('service_show', *params, **service_args)
+        except errors.NotFound:
+            raise KeyError
+        serviceresult = result['result']
 
         for candidate in serviceresult.get('managedby_host', []):
             if candidate != hostname:
@@ -432,8 +476,14 @@ class IPAClient(IPANovaJoinBase):
         service_args = {}
         if batch:
             self._add_batch_operation('service_del', *params, **service_args)
+            if principal in self.service_cache:
+                del self.service_cache[principal]
         else:
-            return self._call_ipa('service_del', *params, **service_args)
+            service_del_return = self._call_ipa(
+                'service_del', *params, **service_args)
+            if principal in self.service_cache:
+                del self.service_cache[principal]
+            return service_del_return
 
     def add_ip(self, hostname, floating_ip):
         """Add a floating IP to a given hostname."""
