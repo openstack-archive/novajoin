@@ -1,0 +1,9 @@
+Code-Review+2: Ade Lee <alee@redhat.com>
+Code-Review+2: Rob Crittenden <rcritten@redhat.com>
+Workflow+1: Rob Crittenden <rcritten@redhat.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Fri, 09 Feb 2018 16:03:00 +0000
+Reviewed-on: https://review.openstack.org/542074
+Project: openstack/novajoin
+Branch: refs/heads/master
