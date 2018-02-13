@@ -288,6 +288,7 @@ class NovajoinRole(object):
                            u'System: remove dns entries',
                            u'System: add dns entries',
                            u'System: update dns entries',
+                           u'System: Modify Realm Domains',
                            u'Retrieve Certificates from the CA',
                            u'Revoke Certificate']})
 
