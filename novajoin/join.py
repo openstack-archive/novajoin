@@ -216,6 +216,11 @@ class JoinController(Controller):
             LOG.error(traceback.format_exc())
 
         self.ipaclient.start_batch_operation()
+        dns_entries = [metadata[key] for key in metadata.keys()
+                       if key.startwith('dns_entry_')]
+        if dns_entries:
+            self.handle_dns_entries(dns_entries)
+
         # key-per-service
         managed_services = [metadata[key] for key in metadata.keys()
                             if key.startswith('managed_service_')]
@@ -309,3 +314,20 @@ class JoinController(Controller):
                     services_found.append(principal)
 
                 self.ipaclient.service_add_host(principal, base_host)
+
+    def handle_dns_entries(self, dns_entries):
+        """Create DNS entries as passed in from the meatdata
+
+        Desired DNS Entries are passed in the metadata in entries
+        of the form:
+            dns_entry_$id = {"fqdn": "$fqdn", "ip": "$ip"}
+
+        dns_entries is a list of those entries.
+
+        The $ip passed can either be a IPv4 or IPv6 address.  The novajoin
+        ipaclient code will determine the address type and add either
+        A or AAAA entries.
+        """
+        for entry_json in dns_entries:
+            entry = json.loads(entry_json)
+            self.ipaclient.add_ip(entry['fqdn'], entry['ip'])
