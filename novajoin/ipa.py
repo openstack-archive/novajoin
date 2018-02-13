@@ -13,6 +13,7 @@
 #    under the License.
 
 import cachetools
+import ipaddress
 import os
 import time
 import uuid
@@ -228,6 +229,7 @@ class IPANovaJoinBase(object):
 class IPAClient(IPANovaJoinBase):
 
     # TODO(jaosorior): Make the cache time and ttl configurable
+    dns_cache = cachetools.TTLCache(maxsize=512, ttl=30)
     host_cache = cachetools.TTLCache(maxsize=512, ttl=30)
     service_cache = cachetools.TTLCache(maxsize=512, ttl=30)
 
@@ -482,18 +484,28 @@ class IPAClient(IPANovaJoinBase):
 
     def add_ip(self, hostname, floating_ip):
         """Add a floating IP to a given hostname."""
-        LOG.debug('In add_ip')
+        LOG.debug('In add_ip for {}'.format(floating_ip))
 
         if not self._ipa_client_configured():
             LOG.debug('IPA is not configured')
             return
 
-        params = [{"__dns_name__": get_domain() + "."},
-                  {"__dns_name__": hostname}]
-        kw = {'a_part_ip_address': floating_ip}
+        cache_entry = "{}_{}".format(hostname, floating_ip)
+        if cache_entry in self.dns_cache:
+            LOG.debug('entry {} in dns_cache'.format(cache_entry))
+            return
 
         try:
+            addr = ipaddress.ip_address(floating_ip)
+            params = [{"__dns_name__": get_domain() + "."},
+                      {"__dns_name__": hostname}]
+            if isinstance(addr, ipaddress.IPv4Address):
+                kw = {'a_part_ip_address': floating_ip}
+            else:
+                kw = {'aaaa_part_ip_address': floating_ip}
+
             self._call_ipa('dnsrecord_add', *params, **kw)
+            self.dns_cache[cache_entry] = True
         except (errors.DuplicateEntry, errors.ValidationError):
             pass
 
