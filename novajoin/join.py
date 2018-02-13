@@ -60,6 +60,9 @@ class Join(base.APIRouter):
         mapper.connect('join', '/',
                        controller=self.resources['join'],
                        action='create')
+        mapper.connect('join', '/dns-entries',
+                       controller=self.resources['join'],
+                       action='create_dns_entries')
         mapper.redirect('', '/')
 
 
@@ -216,6 +219,11 @@ class JoinController(Controller):
             LOG.error(traceback.format_exc())
 
         self.ipaclient.start_batch_operation()
+        dns_entries = [metadata[key] for key in metadata.keys()
+                       if key.startswith('dns_entry_')]
+        if dns_entries:
+            self.handle_dns_entries(dns_entries)
+
         # key-per-service
         managed_services = [metadata[key] for key in metadata.keys()
                             if key.startswith('managed_service_')]
@@ -228,6 +236,24 @@ class JoinController(Controller):
         self.ipaclient.flush_batch_operation()
 
         return data
+
+    @response(201)
+    def create_dns_entries(self, req, body=None):
+        """Create DNS entries in IPA
+        """
+        if not body:
+            LOG.error('No body in create dns_entries_request')
+            raise base.Fault(webob.exc.HTTPBadRequest())
+
+        metadata = body.get('entries', {})
+
+        self.ipaclient.start_batch_operation()
+        dns_entries = [metadata[key] for key in metadata.keys()
+                       if key.startswith('dns_entry_')]
+        if dns_entries:
+            self.handle_dns_entries(dns_entries)
+
+        self.ipaclient.flush_batch_operation()
 
     def handle_services(self, base_host, services):
         """Make any host/principal assignments passed into metadata."""
@@ -309,3 +335,20 @@ class JoinController(Controller):
                     services_found.append(principal)
 
                 self.ipaclient.service_add_host(principal, base_host)
+
+    def handle_dns_entries(self, dns_entries):
+        """Create DNS entries as passed in from the meatdata
+
+        Desired DNS Entries are passed in the metadata in entries
+        of the form:
+            dns_entry_$id = {"fqdn": "$fqdn", "ip": "$ip"}
+
+        dns_entries is a list of those entries.
+
+        The $ip passed can either be a IPv4 or IPv6 address.  The novajoin
+        ipaclient code will determine the address type and add either
+        A or AAAA entries.
+        """
+        for entry_json in dns_entries:
+            entry = json.loads(entry_json)
+            self.ipaclient.add_ip(entry['fqdn'], entry['ip'])
