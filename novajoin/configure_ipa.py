@@ -101,6 +101,7 @@ class NovajoinRole(object):
         else:
             self.hostname = hostname
         self.service = u'nova/%s' % self.hostname
+        self.dns_service = u'dnsadmin/%s' % self.hostname
         self.ccache_name = None
 
     def _get_fqdn(self):
@@ -291,6 +292,17 @@ class NovajoinRole(object):
                            u'Retrieve Certificates from the CA',
                            u'Revoke Certificate']})
 
+        self._call_ipa(u'privilege_add', u'Nova DNS Management',
+                       {'description': u'Nova DNS Management'})
+
+        self._call_ipa(u'privilege_add_permission', u'Nova DNS Management',
+                       {u'permission': [
+                           u'System: read dns entries',
+                           u'System: remove dns entries',
+                           u'System: add dns entries',
+                           u'System: update dns entries',
+                           u'System: modify realm domains']})
+
     def _add_role(self):
         logging.debug('Add role')
         self._call_ipa(u'role_add', u'Nova Host Manager',
@@ -299,6 +311,13 @@ class NovajoinRole(object):
                        {'privilege': u'Nova Host Management'})
         self._call_ipa(u'role_add_member', u'Nova Host Manager',
                        {u'service': self.service})
+
+        self._call_ipa(u'role_add', u'Nova DNS Manager',
+                       {'description': u'Nova DNS Manager'})
+        self._call_ipa(u'role_add_privilege', u'Nova DNS Manager',
+                       {'privilege': u'Nova DNS Management'})
+        self._call_ipa(u'role_add_member', u'Nova DNS Manager',
+                       {u'service': self.dns_service})
 
     def _add_host(self, filename):
         logging.debug('Add host %s', self.hostname)
@@ -317,9 +336,9 @@ class NovajoinRole(object):
         else:
             return otp
 
-    def _add_service(self):
-        logging.debug('Add service %s', self.service)
-        self._call_ipa(u'service_add', self.service, {'force': True})
+    def _add_service(self, service):
+        logging.debug('Add service %s', service)
+        self._call_ipa(u'service_add', service, {'force': True})
 
     def _get_keytab(self):
         logging.debug('Getting keytab %s for %s', self.keytab, self.service)
@@ -354,7 +373,8 @@ class NovajoinRole(object):
         otp = None
         if precreate:
             otp = self._add_host(otp_filename)
-        self._add_service()
+        self._add_service(self.service)
+        self._add_service(self.dns_service)
         if not precreate:
             self._get_keytab()
         self._add_permissions()
