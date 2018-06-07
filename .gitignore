@@ -5,3 +5,4 @@ tools/lintstack.head.py
 *.egg-info/
 .tox
 .testrepository
+.stestr
