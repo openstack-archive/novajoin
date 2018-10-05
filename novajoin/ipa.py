@@ -260,7 +260,7 @@ class IPAClient(IPANovaJoinBase):
 
         if hostname in self.host_cache:
             LOG.debug('Host  ' + hostname + ' found in cache.')
-            return True
+            return self.host_cache[hostname]
 
         params = [hostname]
 
@@ -289,21 +289,25 @@ class IPAClient(IPANovaJoinBase):
 
         try:
             self._call_ipa('host_mod', *params, **modargs)
+            self.host_cache[hostname] = ipaotp.decode('UTF-8')
         except errors.NotFound:
             try:
                 self._call_ipa('host_add', *params, **hostargs)
-                self.host_cache[hostname] = True
+                self.host_cache[hostname] = ipaotp.decode('UTF-8')
             except errors.DuplicateEntry:
-                self.host_cache[hostname] = True
+                # We have no idea what the OTP is for the existing host.
+                return False
             except (errors.ValidationError, errors.DNSNotARecordError):
-                pass
+                # Assumes despite these exceptions the host was created
+                # and the OTP was set.
+                self.host_cache[hostname] = ipaotp.decode('UTF-8')
         except errors.ValidationError:
             # Updating the OTP on an enrolled-host is not allowed
             # in IPA and really a no-op.
-            self.host_cache[hostname] = True
+            # We don't know the OTP of the host, so we cannot update the cache.
             return False
 
-        return True
+        return self.host_cache.get(hostname, False)
 
     def add_subhost(self, hostname):
         """Add a subhost to IPA.

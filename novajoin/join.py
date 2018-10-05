@@ -200,15 +200,14 @@ class JoinController(Controller):
 
         ipaotp = uuid.uuid4().hex
 
-        data['ipaotp'] = ipaotp
         data['hostname'] = get_fqdn(hostname_short, project_name)
         _, realm = self.ipaclient.get_host_and_realm()
         data['krb_realm'] = realm
 
         try:
-            res = self.ipaclient.add_host(data['hostname'], ipaotp,
-                                          metadata, image_metadata)
-            if not res:
+            data['ipaotp'] = self.ipaclient.add_host(data['hostname'], ipaotp,
+                                                     metadata, image_metadata)
+            if not data['ipaotp']:
                 # OTP was not added to host, don't return one
                 del data['ipaotp']
         except Exception as e:  # pylint: disable=broad-except
