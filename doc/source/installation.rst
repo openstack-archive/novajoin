@@ -37,7 +37,7 @@ Installing novajoin from trunk source
 -------------------------------------
 ::
 
-    pip install git+https://github.com/rcritten/novajoin
+    pip install git+https://github.com/openstack/novajoin
 
 
 Configuration
