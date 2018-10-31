@@ -28,9 +28,11 @@ import testtools
 import time
 import uuid
 
+
 from ipapython.ipa_log_manager import log_mgr
 
 from ipalib import api
+import six
 
 from novajoin import config
 from novajoin.ipa import IPAClient
@@ -60,7 +62,7 @@ class TestIPAService(testtools.TestCase):
         console = log_mgr.get_handler('console')
         console.setLevel(logging.WARN)
         if hostname is None:
-            hostname = unicode(str(uuid.uuid4()) + '.' + api.env.domain)
+            hostname = six.text_type(str(uuid.uuid4()) + '.' + api.env.domain)
         os.environ['KRB5_CONFIG'] = 'krb5.conf'
 
     def test_host_add(self):
@@ -79,7 +81,7 @@ class TestIPAService(testtools.TestCase):
 
     def test_host_subhost(self):
         global hostname
-        subhost = unicode(str(uuid.uuid4()) + '.' + api.env.domain)
+        subhost = six.text_type(str(uuid.uuid4()) + '.' + api.env.domain)
         self.ipaclient.add_subhost(subhost)
         self.ipaclient.flush_batch_operation()
 
@@ -103,7 +105,7 @@ class TestIPAService(testtools.TestCase):
         ipaotp = str(uuid.uuid4())
         metadata = {}
         image_metadata = {}
-        subhost = unicode(str(uuid.uuid4()) + '.' + api.env.domain)
+        subhost = six.text_type(str(uuid.uuid4()) + '.' + api.env.domain)
         service_principal = u'test/%s' % subhost
         self.ipaclient.add_host(hostname, ipaotp, metadata, image_metadata)
         self.ipaclient.add_host(subhost, ipaotp, metadata, image_metadata)
