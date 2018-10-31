@@ -1,0 +1,11 @@
+Code-Review+1: Vu Cong Tuan <tuanvc@vn.fujitsu.com>
+Code-Review+1: Grzegorz Grasza <xek@redhat.com>
+Code-Review+2: Juan Antonio Osorio Robles <jaosorior@redhat.com>
+Code-Review+2: Ade Lee <alee@redhat.com>
+Workflow+1: Ade Lee <alee@redhat.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Wed, 31 Oct 2018 15:04:07 +0000
+Reviewed-on: https://review.openstack.org/573154
+Project: openstack/novajoin
+Branch: refs/heads/master
