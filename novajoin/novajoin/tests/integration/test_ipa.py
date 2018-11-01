@@ -24,14 +24,13 @@ and comment-out/remove the console.setLevel(logging.WARN).
 
 import logging
 import os
+import sys
 import testtools
 import time
 import uuid
 
-
-from ipapython.ipa_log_manager import log_mgr
-
 from ipalib import api
+from ipapython import version
 import six
 
 from novajoin import config
@@ -58,9 +57,19 @@ class TestIPAService(testtools.TestCase):
         CONF.keytab = '/tmp/test.keytab'
         super(TestIPAService, self).setUp()
         self.ipaclient = IPAClient()
+
         # suppress the Forwarding messages from ipa
-        console = log_mgr.get_handler('console')
-        console.setLevel(logging.WARN)
+        if version.NUM_VERSION < 40600:
+            from ipapython.ipa_log_manager import log_mgr
+            console = log_mgr.get_handler('console')
+            console.setLevel(logging.WARN)
+        elif version.NUM_VERSION < 40700:
+            from ipapython.ipa_log_manager import root_logger
+            for hlr in root_logger.handlers:
+                if (isinstance(hlr, logging.StreamHandler) and
+                        hlr.stream is sys.stderr):  # pylint: disable=no-member
+                    hlr.setLevel(logging.WARN)
+
         if hostname is None:
             hostname = six.text_type(str(uuid.uuid4()) + '.' + api.env.domain)
         os.environ['KRB5_CONFIG'] = 'krb5.conf'

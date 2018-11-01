@@ -20,10 +20,15 @@ import shutil
 import sys
 from ipalib import api, errors
 from ipapython import version
-from ipapython.ipa_log_manager import log_mgr
 from novajoin import configure_ipa
 from novajoin.errors import ConfigurationError
 
+if version.NUM_VERSION < 40600:
+    from ipapython.ipa_log_manager import log_mgr
+    console = log_mgr.get_handler('console')
+    console.setLevel(logging.WARN)
+elif version.NUM_VERSION < 40700:
+    ...something...
 
 IPACONF = '/etc/ipa/default.conf'
 
@@ -67,8 +72,16 @@ if __name__ == '__main__':
                                 and opts.realm and opts.server)
 
     # suppress the Forwarding messages from ipa
-    console = log_mgr.get_handler('console')
-    console.setLevel(logging.WARN)
+    if version.NUM_VERSION < 40600:
+        from ipapython.ipa_log_manager import log_mgr
+        console = log_mgr.get_handler('console')
+        console.setLevel(logging.WARN)
+    elif version.NUM_VERSION < 40700:
+        from ipapython.ipa_log_manager import root_logger
+        for handler in root_logger.handlers:
+           if (isinstance(handler, logging.StreamHandler) and 
+                 handler.stream is sys.stderr):  # pylint: disable=no-member
+               handler.setLevel(logging.WARN)
 
     novajoin = configure_ipa.NovajoinRole(user=opts.user,
                                           hostname=opts.hostname)
