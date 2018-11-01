@@ -155,8 +155,11 @@ class NovajoinRole(object):
             except Exception as e:
                 raise ConfigurationError("get_ca_certs() error: %s" % e)
 
-        certs = [x509.load_certificate(c[0], x509.DER) for c in certs
-                 if c[2] is not False]
+        if version.NUM_VERSION < 40600:
+            certs = [x509.load_certificate(c[0], x509.DER) for c in certs
+                     if c[2] is not False]
+        else:
+            certs = [c[0] for c in certs if c[2] is not False]
 
         return certs
 
@@ -200,8 +203,9 @@ class NovajoinRole(object):
         os.close(cafile_fd)
 
         ca_certs = self._get_ca_certs(server, realm)
-        ca_certs = [cert.public_bytes(serialization.Encoding.PEM)
-                    for cert in ca_certs]
+        if version.NUM_VERSION < 40600:
+            ca_certs = [cert.public_bytes(serialization.Encoding.PEM)
+                        for cert in ca_certs]
         x509.write_certificate_list(ca_certs, cafile_name)
 
         return cafile_name
