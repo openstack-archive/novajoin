@@ -28,10 +28,8 @@ import testtools
 import time
 import uuid
 
-
-from ipapython.ipa_log_manager import log_mgr
-
 from ipalib import api
+from ipapython import version
 import six
 
 from novajoin import config
@@ -58,9 +56,14 @@ class TestIPAService(testtools.TestCase):
         CONF.keytab = '/tmp/test.keytab'
         super(TestIPAService, self).setUp()
         self.ipaclient = IPAClient()
+
         # suppress the Forwarding messages from ipa
-        console = log_mgr.get_handler('console')
-        console.setLevel(logging.WARN)
+        # This is not needed in versions newer than 4.7
+        if version.NUM_VERSION < 40600:
+            from ipapython.ipa_log_manager import log_mgr
+            console = log_mgr.get_handler('console')
+            console.setLevel(logging.WARN)
+
         if hostname is None:
             hostname = six.text_type(str(uuid.uuid4()) + '.' + api.env.domain)
         os.environ['KRB5_CONFIG'] = 'krb5.conf'
