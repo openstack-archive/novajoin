@@ -56,6 +56,8 @@ class TestIPAService(testtools.TestCase):
     def setUp(self):
         global hostname
         CONF.keytab = '/tmp/test.keytab'
+        if not os.path.isfile(CONF.keytab):
+            CONF.keytab = '/etc/novajoin/krb5.keytab'
         super(TestIPAService, self).setUp()
         self.ipaclient = IPAClient()
         # suppress the Forwarding messages from ipa
@@ -63,7 +65,8 @@ class TestIPAService(testtools.TestCase):
         console.setLevel(logging.WARN)
         if hostname is None:
             hostname = six.text_type(str(uuid.uuid4()) + '.' + api.env.domain)
-        os.environ['KRB5_CONFIG'] = 'krb5.conf'
+        os.environ['KRB5_CONFIG'] = os.path.join(
+            os.path.dirname(__file__), 'krb5.conf')
 
     def test_host_add(self):
         global hostname
