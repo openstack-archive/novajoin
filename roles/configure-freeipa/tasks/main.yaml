@@ -1,0 +1,56 @@
+- name: Uninstall urllib3 via pip
+  command: pip uninstall -y urllib3
+  become: true
+
+- name: Install FreeIPA
+  package:
+    name: ipa-server-dns
+    state: present
+  become: true
+
+- name: check if mod_nss is installed
+  package:
+    name: mod_nss
+    state: present
+  check_mode: true
+  ignore_errors: yes
+  register: mod_nss_check
+
+- name: Remove mod_ssl config which conflicts with FreeIPA
+  file:
+    path: /etc/httpd/conf.d/ssl.conf
+    state: absent
+  become: true
+  when: not mod_nss_check.changed
+
+- name: Stop unbound
+  systemd:
+    name: unbound
+    state: stopped
+  become: true
+
+- name: Find Paramiko ssh_gss.py
+  command: python -c "from paramiko import ssh_gss; print(ssh_gss.__file__.rstrip('c'))"
+  register: ssh_gss_file
+
+- name: Patch Paramiko (https://github.com/paramiko/paramiko/pull/1311)
+  replace:
+    path: '{{ ssh_gss_file.stdout }}'
+    regexp: 'GSS_EXCEPTIONS = \(gssapi.GSSException,\)'
+    replace: 'GSS_EXCEPTIONS = ()'
+  become: true
+
+- name: Patch Paramiko (https://github.com/paramiko/paramiko/pull/1311)
+  replace:
+    path: '{{ ssh_gss_file.stdout }}'
+    regexp: 'GSS_AUTH_AVAILABLE = True'
+    replace: 'GSS_AUTH_AVAILABLE = False'
+  become: true
+
+- name: Configure FreeIPA
+  command: >
+    ipa-server-install -U -r EXAMPLE.TEST
+    -p password -a password --hostname {{ ansible_hostname }}.example.test
+    --ip-address={{ ansible_default_ipv4.address }}
+    --setup-dns --forwarder=8.8.4.4 --forwarder=8.8.8.8 --no-reverse
+  become: true
