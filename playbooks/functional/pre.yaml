@@ -1,0 +1,24 @@
+- hosts: all
+  tasks:
+
+    - name: Install FreeIPA
+      package:
+        name: ipa-server-dns
+        state: present
+
+    - name: Configure FreeIPA
+      command: >
+        ipa-server-install -U -r `hostname -d|tr "[a-z]" "[A-Z]"`
+        -p password -a password --hostname `hostname -f`
+        --ip-address={{ ansible_default_ipv4.address }}
+        --setup-dns --auto-forwarders --auto-reverse
+        --allow-zone-overlap
+
+    - name: Configure novajoin
+      command: >
+        novajoin-install --debug --principal admin --password password
+        --user stack --nova-password {{ devstack_localrc.SERVICE_PASSWORD }}
+        --keystone-auth-url http://{{ ansible_default_ipv4.address }}/identity
+
+#    - name: Start novajoin service
+#    - name: Reconfigure DNS
