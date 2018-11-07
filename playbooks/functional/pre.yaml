@@ -1,0 +1,55 @@
+- hosts: all
+  tasks:
+
+    - name: Read IP address
+      command: "awk '!/127.0./ && /controller/ { print $1 }' /etc/hosts"
+      register: ip_address
+
+    - name: Change hostname in /etc/hosts
+      replace:
+        path: /etc/hosts
+        regexp: '{{ ansible_hostname }}'
+        replace: '{{ ansible_hostname }}.example.test {{ ansible_hostname }}'
+      become: true
+
+    - name: Remove controller from /etc/hosts
+      replace:
+        path: /etc/hosts
+        regexp: 'controller'
+        state: absent
+      become: true
+
+    - name: Change hostname
+      command: 'hostnamectl set-hostname {{ ansible_hostname }}.example.test'
+      become: true
+
+    - name: Get hosts
+      command: "cat /etc/hosts"
+      register: hosts_cat
+
+    - debug: msg="/etc/hosts contents {{ hosts_cat.stdout }}"
+
+    - name: Install FreeIPA
+      package:
+        name: ipa-server-dns
+        state: present
+      become: true
+
+    - name: Configure FreeIPA
+      command: >
+        ipa-server-install -U -r EXAMPLE.TEST
+        -p password -a password --hostname {{ ansible_hostname }}.example.test
+        --ip-address={{ ip_address.stdout }}
+        --setup-dns --auto-forwarders --auto-reverse
+        --allow-zone-overlap
+      become: true
+
+    - name: Configure novajoin
+      command: >
+        novajoin-install --debug --principal admin --password password
+        --user stack --nova-password {{ devstack_localrc.SERVICE_PASSWORD }}
+        --keystone-auth-url http://{{ ip_address.stdout }}/identity
+      become: true
+
+#    - name: Start novajoin service
+#    - name: Reconfigure DNS
