@@ -1,0 +1,27 @@
+- hosts: all
+  tasks:
+
+    - name: Change hostname in /etc/hosts
+      replace:
+        path: /etc/hosts
+        regexp: '{{ ansible_hostname }}'
+        replace: '{{ ansible_hostname }}.example.test {{ ansible_hostname }}'
+      become: true
+
+    - name: Remove 127.0.1.1 from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: '127\.0\.1\.1'
+        state: absent
+      become: true
+
+    - name: Remove controller from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: 'controller'
+        state: absent
+      become: true
+
+    - name: Change hostname
+      command: 'hostnamectl set-hostname {{ ansible_hostname }}.example.test'
+      become: true
