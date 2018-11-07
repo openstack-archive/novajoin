@@ -1,0 +1,59 @@
+- hosts: all
+  tasks:
+
+    - name: Change hostname in /etc/hosts
+      replace:
+        path: /etc/hosts
+        regexp: '{{ ansible_hostname }}'
+        replace: '{{ ansible_hostname }}.example.test {{ ansible_hostname }}'
+      become: true
+
+    - name: Remove 127.0.1.1 from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: '127\.0\.1\.1'
+        state: absent
+      become: true
+
+    - name: Remove controller from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: 'controller'
+        state: absent
+      become: true
+
+    - name: Change hostname
+      command: 'hostnamectl set-hostname {{ ansible_hostname }}.example.test'
+      become: true
+
+    - name: Install FreeIPA
+      package:
+        name: ipa-server-dns
+        state: present
+      become: true
+
+    - name: Install mod_ssl
+      package:
+        name: mod_ssl
+        state: present
+      become: true
+
+    - name: Uninstall mod_nss which conflicts with devstack
+      package:
+        name: mod_nss
+        state: absent
+      become: true
+
+    - name: Stop unbound
+      systemd:
+        name: unbound
+        state: stopped
+      become: true
+
+    - name: Configure FreeIPA
+      command: >
+        ipa-server-install -U -r EXAMPLE.TEST
+        -p password -a password --hostname {{ ansible_hostname }}.example.test
+        --ip-address={{ ansible_default_ipv4.address }}
+        --setup-dns --forwarder=8.8.4.4 --forwarder=8.8.8.8 --no-reverse
+      become: true
