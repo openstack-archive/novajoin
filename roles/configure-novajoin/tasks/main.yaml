@@ -1,0 +1,42 @@
+- name: Build novajoin
+  command: python setup.py build
+  args:
+    chdir: '{{ zuul.project.src_dir }}'
+
+- name: Install novajoin
+  command: python setup.py install
+  args:
+    chdir: '{{ zuul.project.src_dir }}'
+  become: true
+
+- name: Configure novajoin
+  shell: >
+    source /opt/stack/devstack/openrc admin admin &&
+    novajoin-install --debug --principal admin --password password
+    --user stack --nova-password secretservice
+    --keystone-auth-url http://127.0.0.1/identity
+  args:
+    executable: /bin/bash
+  become: true
+
+- name: Chmod /etc/novajoin/krb5.keytab for use by tests
+  file:
+    path: /etc/novajoin/krb5.keytab
+    mode: "u+r,g+r,o+r"
+
+- name: Create novajoin log directory
+  file:
+    path: /var/log/novajoin
+    state: directory
+    owner: stack
+  become: true
+
+- name: Start novajoin-server
+  shell: nohup novajoin-server --debug </dev/null >/dev/null 2>&1 &
+  become: true
+  become_user: stack
+
+- name: Start novajoin-notify
+  shell: nohup novajoin-notify --debug </dev/null >/dev/null 2>&1 &
+  become: true
+  become_user: stack
