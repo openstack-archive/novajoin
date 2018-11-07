@@ -1,0 +1,58 @@
+- hosts: all
+  tasks:
+
+    - name: Change hostname in /etc/hosts
+      replace:
+        path: /etc/hosts
+        regexp: '{{ ansible_hostname }}'
+        replace: '{{ ansible_hostname }}.example.test {{ ansible_hostname }}'
+      become: true
+
+    - name: Remove controller from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: 'controller'
+        state: absent
+      become: true
+
+    - name: Change hostname
+      command: 'hostnamectl set-hostname {{ ansible_hostname }}.example.test'
+      become: true
+
+    - name: Install FreeIPA
+      package:
+        name: ipa-server-dns
+        state: present
+      become: true
+
+    - name: remove unbound
+      package:
+        name: unbound
+        state: absent
+      become: true
+
+    - name: Configure FreeIPA
+      command: >
+        ipa-server-install -U -r EXAMPLE.TEST
+        -p password -a password --hostname {{ ansible_hostname }}.example.test
+        --ip-address={{ ansible_default_ipv4.address }}
+        --setup-dns --forwarder=8.8.4.4 --forwarder=8.8.8.8 --auto-reverse
+        --allow-zone-overlap
+      become: true
+
+    - name: resolve srv ldap
+      command: host -t srv _ldap._tcp.example.test
+
+    - name: resolve srv ldap 127.0.0.1
+      command: host -t srv _ldap._tcp.example.test 127.0.0.1
+
+    - name: resolve srv ldap ansible ipv4 address
+      command: host -t srv _ldap._tcp.example.test {{ ansible_default_ipv4.address }}
+
+    - name: show resolv.conf
+      command: cat /etc/resolv.conf
+      become: true
+
+    - name: show netstat listening sockets
+      command: netstat -lntp
+      become: true
