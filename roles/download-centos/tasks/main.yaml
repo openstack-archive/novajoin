@@ -1,0 +1,26 @@
+- name: Download image
+  get_url:
+    url: https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2.xz
+    dest: /tmp/centos-image.qcow2.xz
+
+- name: Extract image
+  unarchive:
+    remote_src: yes
+    src: /tmp/centos-image.qcow2.xz
+    dest: /tmp/centos-image.qcow2
+
+- name: Add image to Glance
+  os_image:
+    auth:
+      auth_url: http://localhost/auth/v2.0
+      username: admin
+      password: admin
+      project_name: admin
+    name: centos-image
+    container_format: bare
+    disk_format: qcow2
+    state: present
+    filename: /tmp/centos-image.qcow2
+    properties:
+      cpu_arch: x86_64
+      distro: centos
