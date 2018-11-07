@@ -1,0 +1,34 @@
+- project:
+    check:
+      jobs:
+        - novajoin-functional:
+            voting: false
+
+- job:
+    name: novajoin-functional
+    description: |
+      Run functional tests for novajoin.
+    parent: devstack-tox-functional
+    nodeset: devstack-single-node-fedora-latest
+    pre-run: playbooks/functional/pre.yaml
+    vars:
+      devstack_services:
+        # Swift services
+        s-account: false
+        s-container: false
+        s-object: false
+        s-proxy: false
+        # Cinder services
+        c-api: false
+        c-bak: false
+        c-sch: false
+        c-vol: false
+        cinder: false
+    group-vars:
+      subnode:
+        devstack_services:
+          # Swift services
+          # s-*: false
+          # Cinder services
+          c-bak: false
+          c-vol: false

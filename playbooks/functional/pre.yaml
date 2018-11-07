@@ -1,0 +1,42 @@
+- hosts: all
+  tasks:
+
+    - name: Find Paramico ssh_gss.py
+      command: 'python -c "from paramiko import ssh_gss; print(ssh_gss.__file__)"'
+      register: ssh_gss_file
+
+    - name: Patch Paramico (https://github.com/paramiko/paramiko/pull/1311)
+      replace:
+        path: '{{ ssh_gss_file.stdout }}'
+        regexp: 'except \(ImportError, OSError\):'
+        replace: 'except (ImportError, OSError, AttributeError):'
+        validate: 'python -c "from paramiko import ssh_gss"'
+
+    - name: Install FreeIPA
+      package:
+        name: ipa-server-dns
+        state: present
+
+    - name: Configure FreeIPA
+      command: >
+        ipa-server-install -U -r `hostname -d|tr "[a-z]" "[A-Z]"`
+        -p password -a password --hostname `hostname -f`
+        --ip-address={{ ansible_default_ipv4.address }}
+        --setup-dns --auto-forwarders --auto-reverse
+        --allow-zone-overlap
+
+#    - name: Get Nova password
+#      command: >
+#        python -c "from configparser import ConfigParser;
+#        config = ConfigParser(); config.read('/etc/nova/nova.conf');
+#        print(config['keystone_authtoken']['password'])"
+#      register: nova_password
+
+    - name: Configure novajoin
+      command: >
+        novajoin-install --debug --principal admin --password password
+        --user stack --nova-password {{ devstack_localrc.SERVICE_PASSWORD }}
+        --keystone-auth-url http://{{ ansible_default_ipv4.address }}/identity
+
+#    - name: Start novajoin service
+#    - name: Reconfigure DNS
