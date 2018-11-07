@@ -1,0 +1,83 @@
+- hosts: all
+  tasks:
+
+    - name: Change hostname in /etc/hosts
+      replace:
+        path: /etc/hosts
+        regexp: '{{ ansible_hostname }}'
+        replace: '{{ ansible_hostname }}.example.test {{ ansible_hostname }}'
+      become: true
+
+    - name: Remove 127.0.1.1 from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: '127\.0\.1\.1'
+        state: absent
+      become: true
+
+    - name: Remove controller from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: 'controller'
+        state: absent
+      become: true
+
+    - name: Change hostname
+      command: 'hostnamectl set-hostname {{ ansible_hostname }}.example.test'
+      become: true
+
+    - name: Install FreeIPA
+      package:
+        name: ipa-server-dns
+        state: present
+      become: true
+
+    - name: check if mod_nss is installed
+      package:
+        name: mod_nss
+        state: present
+      check_mode: true
+      ignore_errors: yes
+      register: mod_nss_check
+
+    - name: Install mod_ssl before devstack installs it
+      package:
+        name: mod_ssl
+        state: present
+      become: true
+      when: not mod_nss_check.changed
+
+    - name: Remove mod_ssl config which conflicts with FreeIPA
+      file:
+        path: /etc/httpd/conf.d/ssl.conf
+        state: absent
+      become: true
+      when: not mod_nss_check.changed
+
+    - name: Stop unbound
+      systemd:
+        name: unbound
+        state: stopped
+      become: true
+
+    - name: Configure FreeIPA
+      command: >
+        ipa-server-install -U -r EXAMPLE.TEST
+        -p password -a password --hostname {{ ansible_hostname }}.example.test
+        --ip-address={{ ansible_default_ipv4.address }}
+        --setup-dns --forwarder=8.8.4.4 --forwarder=8.8.8.8 --no-reverse
+      become: true
+
+    - name: Install paramiko before devstack installs it
+      package:
+        name: python-paramiko
+        state: present
+      become: true
+
+    - name: Patch Paramico (https://github.com/paramiko/paramiko/pull/1311)
+      replace:
+        path: '/usr/lib/python2.7/site-packages/paramiko/ssh_gss.py'
+        regexp: 'except \(ImportError, OSError\):'
+        replace: 'except (ImportError, OSError, AttributeError):'
+        validate: 'python -c "from paramiko import ssh_gss"'
+      become: true
