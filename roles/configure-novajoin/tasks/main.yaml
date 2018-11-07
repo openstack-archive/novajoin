@@ -1,0 +1,20 @@
+- name: Install novajoin
+  command: python setup.py install
+  args:
+    chdir: /home/zuul/src/git.openstack.org/openstack/novajoin
+  become: true
+
+- name: Check listening sockets
+  command: netstat -lntp
+  become: true
+
+- name: Check certificate
+  command: 'curl -vvI https://{{ ansible_hostname }}.example.test/ipa/json'
+
+- name: Configure novajoin
+  shell: >
+    source /opt/stack/devstack/openrc admin admin &&
+    novajoin-install --debug --principal admin --password password
+    --user stack --nova-password secretservice
+    --keystone-auth-url http://127.0.0.1/identity
+  become: true
