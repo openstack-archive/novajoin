@@ -1,0 +1,16 @@
+- name: Download image
+  get_url:
+    url: https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2.xz
+    dest: /tmp/centos-image.qcow2.xz
+
+- name: Extract image
+  command: unxz /tmp/centos-image.qcow2.xz
+
+- name: Add centos-image to Glance
+  shell: >
+    source /opt/stack/devstack/openrc admin admin &&
+    openstack image create --disk-format qcow2 --container-format bare
+    --public --file /tmp/centos-image.qcow2 centos-image
+  args:
+    executable: /bin/bash
+  become: true
