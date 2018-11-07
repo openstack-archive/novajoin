@@ -38,10 +38,14 @@ Package Requirements
 Beyond those packages normally installed by Openstack, these are also
 required::
 
-    {free}ipa-python
+  python-ipalib
+  python-ipaclient
 
-These may be pip-installable but as of March 2017 it has only been
-extensively tested with real packages installed on RHEL/CentOS/Fedora.
+These may be pip-installable but still require other system packages
+like `krb5-devel` to be present and may not be compatible with your
+FreeIPA installation, so it is best to install them with your system
+package manager. Functional tests are configured to run against
+system packages found on RHEL/CentOS/Fedora.
 
 
 Configuration
