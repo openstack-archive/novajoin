@@ -1,0 +1,12 @@
+- hosts: all
+  roles:
+    - run-devstack
+    - configure-freeipa
+    - role: bindep
+      bindep_profile: test
+      bindep_dir: "{{ zuul_work_dir }}"
+    - configure-novajoin
+    - download-centos
+    - test-setup
+    - ensure-tox
+    - tox
