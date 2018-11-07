@@ -1,0 +1,41 @@
+- hosts: all
+  tasks:
+
+    - name: Read IP address
+      command: "awk '!/127.0./ && /controller/ { print $1 }' /etc/hosts"
+      register: ip_address
+
+    - name: Change hostname in /etc/hosts
+      replace:
+        path: /etc/hosts
+        regexp: '{{ ansible_hostname }}'
+        replace: '{{ ansible_hostname }}.example.test {{ ansible_hostname }}'
+      become: true
+
+    - name: Remove controller from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: 'controller'
+        state: absent
+      become: true
+
+    - name: Change hostname
+      command: 'hostnamectl set-hostname {{ ansible_hostname }}.example.test'
+      become: true
+
+    - name: Install FreeIPA
+      package:
+        name: ipa-server-dns
+        state: present
+      become: true
+
+    - name: Configure FreeIPA
+      command: >
+        ipa-server-install -U -r EXAMPLE.TEST
+        -p password -a password --hostname {{ ansible_hostname }}.example.test
+        --ip-address={{ ip_address.stdout }}
+        --setup-dns --forwarder=8.8.4.4 --forwarder=8.8.8.8 --auto-reverse
+        --allow-zone-overlap
+      become: true
+
+#    - name: Reconfigure DNS

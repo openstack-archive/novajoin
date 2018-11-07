@@ -1,0 +1,6 @@
+- name: Configure novajoin
+  command: >
+    novajoin-install --debug --principal admin --password password
+    --user stack --nova-password secretservice
+    --keystone-auth-url http://127.0.0.1/identity
+  become: true
