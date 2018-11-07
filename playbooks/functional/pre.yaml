@@ -1,0 +1,83 @@
+- hosts: all
+  tasks:
+
+    - name: show /etc/hosts
+      command: cat /etc/hosts
+
+    - name: Change hostname in /etc/hosts
+      replace:
+        path: /etc/hosts
+        regexp: '{{ ansible_hostname }}'
+        replace: '{{ ansible_hostname }}.example.test {{ ansible_hostname }}'
+      become: true
+
+    - name: Remove 127.0.1.1 from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: '127\.0\.1\.1'
+        state: absent
+      become: true
+
+    - name: Remove controller from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: 'controller'
+        state: absent
+      become: true
+
+    - name: Change hostname
+      command: 'hostnamectl set-hostname {{ ansible_hostname }}.example.test'
+      become: true
+
+    - name: Install FreeIPA
+      package:
+        name: ipa-server-dns
+        state: present
+      become: true
+
+    - name: Stop unbound
+      command: systemctl stop unbound
+      become: true
+
+    - name: Remove unbound
+      package:
+        name: unbound
+        state: absent
+      become: true
+
+    - name: Configure FreeIPA
+      command: >
+        ipa-server-install -U -r EXAMPLE.TEST
+        -p password -a password --hostname {{ ansible_hostname }}.example.test
+        --ip-address={{ ansible_default_ipv4.address }} --debug
+        --setup-dns --forwarder=8.8.4.4 --forwarder=8.8.8.8 --no-reverse
+      become: true
+
+    - name: resolve my hostname
+      command: host {{ ansible_hostname }}.example.test
+      ignore_errors: yes
+
+    - name: resolve srv ldap
+      command: host -t srv _ldap._tcp.example.test
+      ignore_errors: yes
+
+    - name: resolve srv ldap 127.0.0.1
+      command: host -t srv _ldap._tcp.example.test 127.0.0.1
+      ignore_errors: yes
+
+    - name: resolve srv ldap ansible ipv4 address
+      command: host -t srv _ldap._tcp.example.test {{ ansible_default_ipv4.address }}
+      ignore_errors: yes
+
+    - name: show resolv.conf
+      command: cat /etc/resolv.conf
+
+    - name: show netstat listening sockets
+      command: netstat -lntp
+      become: true
+
+    - name: show /etc/hosts
+      command: cat /etc/hosts
+
+    - name: Fail
+      command: 'false'
