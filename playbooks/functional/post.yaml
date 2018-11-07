@@ -1,0 +1,33 @@
+- hosts: all
+  tasks:
+
+    - name: Make ipaserver-install log readable
+      file:
+        path: "/var/log/ipaserver-install.log"
+        mode: 0644
+      become: true
+      failed_when: false
+
+    - name: Collect ipaserver-install logs
+      synchronize:
+        dest: "{{ zuul.executor.log_root }}"
+        mode: pull
+        src: "/var/log/ipaserver-install.log"
+        verify_host: true
+      failed_when: false
+
+    - name: Collect novajoin-install logs
+      synchronize:
+        dest: "{{ zuul.executor.log_root }}"
+        mode: pull
+        src: "/var/log/novajoin-install.log"
+        verify_host: true
+      failed_when: false
+
+    - name: Collect novajoin logs
+      synchronize:
+        dest: "{{ zuul.executor.log_root }}"
+        mode: pull
+        src: "/var/log/novajoin"
+        verify_host: true
+      failed_when: false
