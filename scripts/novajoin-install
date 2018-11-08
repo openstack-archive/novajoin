@@ -159,7 +159,7 @@ def install(opts):
     config.read(NOVACONF)
     config.set('DEFAULT',
                'vendordata_jsonfile_path',
-               '/etc/nova/cloud-config-novajoin.json')
+               '/etc/novajoin/cloud-config-novajoin.json')
 
     # set the default domain to the IPA domain. This is added to the
     # instance name to set the hostname.
