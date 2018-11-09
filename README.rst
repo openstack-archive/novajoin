@@ -305,39 +305,40 @@ Packstack
 Some people have had difficulties deploying novajoin within Packstack.
 Here is how I did it on RHEL 7.4 using RHOSP 11 (Ocata).
 
-Install packstack
+Install packstack::
 
     # packstack <your_favorite_options>
 
-Configure host as an IPA client
+Configure host as an IPA client::
 
     # ipa-client-install ...
 
 Get the [keystone_authtoken] section from /etc/nova/nova.conf and call
-the novajoin installer
+the novajoin installer::
 
     # novajoin-install --user nova --keystone-auth-url <auth-url> \
       --nova-password <password> --project services
 
-Add the novajoin user and group
+Add the novajoin user and group::
 
     # groupadd -r novajoin --gid 968
     # useradd -u 968 -r -g novajoin -G novajoin -d /var/lib/novajoin \
       -s /sbin/nologin -c "OpenStack novajoin Daemons" novajoin
 
-Create the log directory
+Create the log directory::
 
     # mkdir /var/log/novajoin
     # chown novajoin:novajoin /var/log/novajoin
 
-Copy the systemd unit files
+Copy the systemd unit files::
 
     # cp /usr/share/novajoin/*.service /usr/lib/systemd/system/
     # systemd daemon-reload
 
-Restart the necessary services
+Restart the necessary services::
 
     # systemctl restart openstack-nova-api novajoin-server novajoin-notify
+
 Origin
 ======
 
