@@ -17,6 +17,9 @@ import os
 import time
 import uuid
 
+from six.moves import http_client
+
+
 try:
     from gssapi.exceptions import GSSError
     from ipalib import api
@@ -158,6 +161,13 @@ class IPANovaJoinBase(object):
                     self.__backoff()
                 tries += 1
             except errors.NetworkError:
+                tries += 1
+                if self.backoff:
+                    self.__backoff()
+            except http_client.ResponseNotReady:
+                # NOTE(xek): This means that the server closed the socket,
+                # so keep-alive ended and we can't use that connection.
+                api.Backend.rpcclient.disconnect()
                 tries += 1
                 if self.backoff:
                     self.__backoff()
