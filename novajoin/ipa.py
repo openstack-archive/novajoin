@@ -13,6 +13,7 @@
 #    under the License.
 
 import cachetools
+import httplib
 import os
 import time
 import uuid
@@ -157,7 +158,14 @@ class IPANovaJoinBase(object):
                 if tries > 0 and self.backoff:
                     self.__backoff()
                 tries += 1
-            except errors.NetworkError:
+            except (errors.NetworkError, httplib.ResponseNotReady):
+                tries += 1
+                if self.backoff:
+                    self.__backoff()
+            except httplib.ResponseNotReady:
+                # NOTE(xek): This means that the server closed the socket,
+                # so keep-alive ended and we can't use that connection.
+                api.Backend.rpcclient.disconnect()
                 tries += 1
                 if self.backoff:
                     self.__backoff()
