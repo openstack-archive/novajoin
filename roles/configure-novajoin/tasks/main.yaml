@@ -36,6 +36,14 @@
   become: true
   become_user: stack
 
+- name: Experiment disable heartbeats
+  blockinfile:
+    path: /etc/nova/nova.conf
+    block: |
+      [oslo_messaging_rabbit]
+      heartbeat_timeout_threshold=0
+  become: true
+
 - name: Restart nova services
   command: systemctl restart devstack@n-*
   become: true
