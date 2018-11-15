@@ -36,6 +36,14 @@
   become: true
   become_user: stack
 
+- name: Enable notifications
+  blockinfile:
+    path: /etc/nova/nova.conf
+    block: |
+      [notifications]
+      notify_on_state_change=vm_state
+      notification_format=unversioned
+
 - name: Restart nova services
   command: systemctl restart devstack@n-*
   become: true
