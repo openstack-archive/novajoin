@@ -481,6 +481,14 @@ class IPAClient(IPANovaJoinBase):
         result = self._call_ipa('service_find', *params, **service_args)
         return result['count'] > 0
 
+    def find_host(self, hostname):
+        """Return True if this host exists"""
+        LOG.debug('Checking if host ' + hostname + ' exists')
+        params = []
+        service_args = {'hostname': hostname}
+        result = self._call_ipa('host_find', *params, **service_args)
+        return result['count'] > 0
+
     def delete_service(self, principal, batch=True):
         LOG.debug('Deleting service: ' + principal)
         params = [principal]
