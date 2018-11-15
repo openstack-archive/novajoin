@@ -107,10 +107,16 @@ novajoin REST service and enable notifications in
     vendordata_dynamic_read_timeout = 30
     vendordata_jsonfile_path = /etc/novajoin/cloud-config-novajoin.json
 
-    [oslo_messaging_notifications]
-    notification_driver = messaging
-    notification_topic = notifications,novajoin_notifications
+    [notifications]
     notify_on_state_change = vm_state
+    notification_format = unversioned
+
+    [oslo_messaging_notifications]
+    ...
+    topics=notifications,novajoin_notifications
+
+.. note::
+   Notifications have to be also enabled and configured on nova computes!
 
 Novajoin enables keystone authentication by default, as seen in
 **/etc/novajoin/join-api-paste.ini**. So credentials need to be set for
@@ -203,9 +209,18 @@ Notification listener Configuration
 ===================================
 
 The only special configuration needed here is to configure nova to
-send notifications to the novajoin topic in /etc/nova/nova.conf:
+send notifications to the novajoin topic in /etc/nova/nova.conf::
 
-    notification_topic = notifications,novajoin_notifications
+    [notifications]
+    notify_on_state_change = vm_state
+    notification_format = unversioned
+
+    [oslo_messaging_notifications]
+    ...
+    topics=notifications,novajoin_notifications
+
+.. note::
+   Notifications have to be also enabled and configured on nova computes!
 
 If you simply use notifications and ceilometer is running then the
 notifications will be roughly split between the two services in a

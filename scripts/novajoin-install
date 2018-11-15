@@ -18,35 +18,21 @@ import logging
 import os
 import pwd
 import shutil
-import socket
-import subprocess
 import sys
 import time
-import copy
-import tempfile
 import getpass
 from ipapython.ipautil import run, user_input
 from ipalib import api
 from ipalib import errors
 from novajoin.errors import ConfigurationError
 from novajoin import configure_ipa
-from six.moves import input
 from six.moves.configparser import SafeConfigParser, NoOptionError
-from subprocess import CalledProcessError
-from string import Template
 from urllib3.util import parse_url
 
-try:
-    from ipapython.ipautil import kinit_password
-except ImportError:
-    # The import moved in freeIPA 4.5.0
-    from ipalib.install.kinit import kinit_password
 
-
-DATADIR = '/usr/share/novajoin'
-NOVADIR = '/etc/nova'
 IPACONF = '/etc/ipa/default.conf'
 NOVACONF = '/etc/nova/nova.conf'
+NOVACPUCONF = '/etc/nova/nova-cpu.conf'
 JOINCONF = '/etc/novajoin/join.conf'
 
 
@@ -84,7 +70,7 @@ def openlogs():
 def install(opts):
     logger.info('Installation initiated')
 
-    if not os.path.exists(IPACONF):
+    if not os.path.exists(opts.ipa_conf):
         raise ConfigurationError('Must be enrolled in IPA')
 
     try:
@@ -96,7 +82,7 @@ def install(opts):
                                  % e.message)
 
     try:
-        user = pwd.getpwnam(opts.user)
+        pwd.getpwnam(opts.user)
     except KeyError:
         raise ConfigurationError('User: %s not found on the system' %
                                  opts.user)
@@ -118,7 +104,7 @@ def install(opts):
     keystone_url = parse_url(opts.keystone_auth_url)
 
     config = SafeConfigParser()
-    config.read(JOINCONF)
+    config.read(opts.novajoin_conf)
     config.set('DEFAULT', 'domain', api.env.domain)  # pylint: disable=no-member
     config.set('DEFAULT',
                'api_paste_config',
@@ -152,11 +138,11 @@ def install(opts):
     config.set('keystone_authtoken', 'user_domain_id', 'default')
 
 
-    with open(JOINCONF, 'w') as f:
+    with open(opts.novajoin_conf, 'w') as f:
         config.write(f)
 
     config = SafeConfigParser()
-    config.read(NOVACONF)
+    config.read(opts.nova_conf)
     config.set('DEFAULT',
                'vendordata_jsonfile_path',
                '/etc/novajoin/cloud-config-novajoin.json')
@@ -176,15 +162,6 @@ def install(opts):
                'vendordata_dynamic_targets',
                'join@http://127.0.0.1:9090/v1/')
 
-    # Notifications
-    config.set('DEFAULT',
-               'notification_topic',
-               'notifications')
-
-    config.set('DEFAULT',
-               'notify_on_state_change',
-               'vm_state')
-
     if not config.has_section('vendordata_dynamic_auth'):
         config.add_section('vendordata_dynamic_auth')
 
@@ -201,14 +178,36 @@ def install(opts):
     except NoOptionError:
         transport_url = None
 
-    with open(NOVACONF, 'w') as f:
+    with open(opts.nova_conf, 'w') as f:
         config.write(f)
+
+    # Notifications
+    for conf in set([opts.nova_conf, opts.nova_cpu_conf]):
+        config = SafeConfigParser()
+        config.read(conf)
+        if not config.has_section('notifications'):
+            config.add_section('notifications')
+
+        config.set('notifications',
+                   'notify_on_state_change',
+                   'vm_state')
+
+        config.set('notifications',
+                   'notification_format',
+                   'unversioned')
+
+        config.set('oslo_messaging_notifications',
+                   'topics',
+                   'notifications,novajoin_notifications')
+        with open(conf, 'w') as f:
+            config.write(f)
+
 
     if transport_url:
         join_config = SafeConfigParser()
-        join_config.read(JOINCONF)
+        join_config.read(opts.novajoin_conf)
         join_config.set('DEFAULT', 'transport_url', transport_url)
-        with open(JOINCONF, 'w') as f:
+        with open(opts.novajoin_conf, 'w') as f:
             join_config.write(f)
 
     logger.info('Importing IPA metadata')
@@ -235,6 +234,16 @@ def parse_args():
                         help='Nova service user password', default=None)
     parser.add_argument('--project', dest='project_name',
                         help='Keystone project', default='service')
+    parser.add_argument('--ipa-conf', dest='ipa_conf',
+                        help='IPA configuration file', default=IPACONF)
+    parser.add_argument('--nova-conf', dest='nova_conf',
+                        help='nova configuration file', default=NOVACONF)
+    parser.add_argument('--nova-cpu-conf', dest='nova_cpu_conf',
+                        help='nova compute configuration file',
+                        default=NOVACPUCONF)
+    parser.add_argument('--novajoin-conf', dest='novajoin_conf',
+                        help='novajoin configuration file',
+                        default=JOINCONF)
     parser = configure_ipa.ipa_options(parser)
 
     opts = parser.parse_args()
