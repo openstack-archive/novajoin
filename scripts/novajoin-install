@@ -18,35 +18,23 @@ import logging
 import os
 import pwd
 import shutil
-import socket
-import subprocess
 import sys
 import time
-import copy
-import tempfile
 import getpass
 from ipapython.ipautil import run, user_input
 from ipalib import api
 from ipalib import errors
 from novajoin.errors import ConfigurationError
 from novajoin import configure_ipa
-from six.moves import input
 from six.moves.configparser import SafeConfigParser, NoOptionError
-from subprocess import CalledProcessError
-from string import Template
 from urllib3.util import parse_url
-
-try:
-    from ipapython.ipautil import kinit_password
-except ImportError:
-    # The import moved in freeIPA 4.5.0
-    from ipalib.install.kinit import kinit_password
 
 
 DATADIR = '/usr/share/novajoin'
 NOVADIR = '/etc/nova'
 IPACONF = '/etc/ipa/default.conf'
 NOVACONF = '/etc/nova/nova.conf'
+NOVACPUCONF = '/etc/nova/nova-cpu.conf'
 JOINCONF = '/etc/novajoin/join.conf'
 
 
@@ -96,7 +84,7 @@ def install(opts):
                                  % e.message)
 
     try:
-        user = pwd.getpwnam(opts.user)
+        pwd.getpwnam(opts.user)
     except KeyError:
         raise ConfigurationError('User: %s not found on the system' %
                                  opts.user)
@@ -176,15 +164,6 @@ def install(opts):
                'vendordata_dynamic_targets',
                'join@http://127.0.0.1:9090/v1/')
 
-    # Notifications
-    config.set('DEFAULT',
-               'notification_topic',
-               'notifications')
-
-    config.set('DEFAULT',
-               'notify_on_state_change',
-               'vm_state')
-
     if not config.has_section('vendordata_dynamic_auth'):
         config.add_section('vendordata_dynamic_auth')
 
@@ -203,6 +182,28 @@ def install(opts):
 
     with open(NOVACONF, 'w') as f:
         config.write(f)
+
+    # Notifications
+    for CONF in [NOVACONF, NOVACPUCONF]:
+        config = SafeConfigParser()
+        config.read(CONF)
+        if not config.has_section('notifications'):
+            config.add_section('notifications')
+
+        config.set('notifications',
+                   'notify_on_state_change',
+                   'vm_state')
+
+        config.set('notifications',
+                   'notification_format',
+                   'unversioned')
+
+        config.set('oslo_messaging_notifications',
+                   'topics',
+                   'notifications,novajoin_notifications')
+        with open(NOVACONF, 'w') as f:
+            config.write(f)
+
 
     if transport_url:
         join_config = SafeConfigParser()
