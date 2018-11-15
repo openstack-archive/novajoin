@@ -17,6 +17,7 @@ import os
 import time
 import uuid
 
+import six
 from six.moves import http_client
 
 
@@ -479,6 +480,14 @@ class IPAClient(IPANovaJoinBase):
         params = []
         service_args = {'man_by_host': service_host}
         result = self._call_ipa('service_find', *params, **service_args)
+        return result['count'] > 0
+
+    def find_host(self, hostname):
+        """Return True if this host exists"""
+        LOG.debug('Checking if host ' + hostname + ' exists')
+        params = []
+        service_args = {'fqdn': six.text_type(hostname)}
+        result = self._call_ipa('host_find', *params, **service_args)
         return result['count'] > 0
 
     def delete_service(self, principal, batch=True):
