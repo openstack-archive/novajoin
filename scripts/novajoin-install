@@ -177,13 +177,20 @@ def install(opts):
                'join@http://127.0.0.1:9090/v1/')
 
     # Notifications
-    config.set('DEFAULT',
-               'notification_topic',
-               'notifications')
+    if not config.has_section('notifications'):
+        config.add_section('notifications')
 
-    config.set('DEFAULT',
+    config.set('notifications',
                'notify_on_state_change',
                'vm_state')
+
+    config.set('notifications',
+               'notification_format',
+               'unversioned')
+
+    config.set('oslo_messaging_notifications',
+               'topics',
+               'notifications,novajoin_notifications')
 
     if not config.has_section('vendordata_dynamic_auth'):
         config.add_section('vendordata_dynamic_auth')
