@@ -19,12 +19,16 @@ The test uses the default demo project and credentials and assumes there is a
 centos-image present in Glance.
 """
 
+import json
 import os
+import StringIO
 import testtools
+import time
 import uuid
 
 import openstack
 from oslo_service import loopingcall
+import paramiko
 
 from novajoin import config
 from novajoin.ipa import IPAClient
@@ -64,13 +68,13 @@ class TestEnrollment(testtools.TestCase):
         self._key = self.conn.compute.create_keypair(name=TEST_KEY)
         group = self.conn.network.find_security_group('default')
         self._rules = []
-        for protocol, port in [('icmp', None), ('tcp', 22), ('tcp', 443)]:
+        for protocol, port in ['icmp', 'tcp', 'udp']:
             try:
                 self._rules.append(
                     self.conn.network.create_security_group_rule(
                         security_group_id=group.id, direction='ingress',
                         remote_ip_prefix='0.0.0.0/0', protocol=protocol,
-                        port_range_max=port, port_range_min=port,
+                        port_range_min=1, port_range_max=65535,
                         ethertype='IPv4'))
             except openstack.exceptions.ConflictException:
                 pass
@@ -112,6 +116,39 @@ class TestEnrollment(testtools.TestCase):
             self.conn.compute.delete_server(self._server)
         self._server = None
 
+    @loopingcall.RetryDecorator(50, 5, 5, (
+        paramiko.ssh_exception.NoValidConnectionsError,))
+    def _ssh_connect(self):
+        # NOTE(xek): We are connectiong to the floating IP address.
+        # Alternatively we could connect to self._server.access_ipv4, but then
+        # we wouldn't be able to connect to keystone from the same namespace.
+
+        pkey = paramiko.RSAKey.from_private_key(
+            StringIO.StringIO(self._key.private_key))
+        client = paramiko.SSHClient()
+        client.load_system_host_keys()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(self._ip.floating_ip_address,
+                       username=TEST_IMAGE_USER, pkey=pkey)
+        return client
+
+    def _check_ipa_client_install(self):
+        ssh = self._ssh_connect()
+        tries = 100
+        while tries:
+            stdin, stdout, stderr = ssh.exec_command(
+                'cat /run/cloud-init/status.json')
+            data = json.load(stdout)
+            if data.get("v1", {}).get("datasource"):
+                time.sleep(5)
+                tries -= 1
+            else:  # cloud-init script finished
+                break
+        stdin, stdout, stderr = ssh.exec_command('id admin')
+        self.assertRegex(
+            'uid=\d+\(admin\) gid=\d+\(admins\) groups=\d+\(admins\)',
+            stdout.read())
+
     @loopingcall.RetryDecorator(200, 5, 5, (AssertionError,))
     def _check_ipa_client_created(self):
         self.assertTrue(
@@ -141,6 +178,9 @@ class TestEnrollment(testtools.TestCase):
         self._check_ip_record_removed()
         self._associate_floating_ip()
         self._check_ip_record_added()
+
+        self._check_ipa_client_install()
+
         self._delete_server()
         self._check_ipa_client_deleted()
         self._check_ip_record_removed()
