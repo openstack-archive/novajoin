@@ -33,6 +33,7 @@ from urllib3.util import parse_url
 IPACONF = '/etc/ipa/default.conf'
 NOVACONF = '/etc/nova/nova.conf'
 NOVACPUCONF = '/etc/nova/nova-cpu.conf'
+NEUTRONCONF = '/etc/neutron/neutron.conf'
 JOINCONF = '/etc/novajoin/join.conf'
 
 
@@ -202,6 +203,17 @@ def install(opts):
         with open(conf, 'w') as f:
             config.write(f)
 
+    config = SafeConfigParser()
+    config.read(opts.neutron_conf)
+    config.set('oslo_messaging_notifications',
+               'driver',
+               'messagingv2')
+    config.set('oslo_messaging_notifications',
+               'topics',
+               'notifications,novajoin_notifications')
+    with open(opts.neutron_conf, 'w') as f:
+        config.write(f)
+
 
     if transport_url:
         join_config = SafeConfigParser()
@@ -241,6 +253,9 @@ def parse_args():
     parser.add_argument('--nova-cpu-conf', dest='nova_cpu_conf',
                         help='nova compute configuration file',
                         default=NOVACPUCONF)
+    parser.add_argument('--neutron-conf', dest='neutron_conf',
+                        help='neutron configuration file',
+                        default=NEUTRONCONF)
     parser.add_argument('--novajoin-conf', dest='novajoin_conf',
                         help='novajoin configuration file',
                         default=JOINCONF)
