@@ -72,7 +72,6 @@ class NotificationEndpoint(object):
         event_type='^compute.instance.create.end|'
                    '^compute.instance.delete.end|'
                    '^compute.instance.update|'
-                   '^network.floating_ip.(dis)?associate|'
                    '^floatingip.update.end')
 
     event_handlers = Registry()
@@ -172,34 +171,32 @@ class NotificationEndpoint(object):
         floating_ip = payload.get('floating_ip')
         LOG.info("Disassociate floating IP %s" % floating_ip)
         ipa = ipaclient()
-        nova = novaclient()
-        server = nova.servers.get(payload.get('instance_id'))
-        if server:
-            ipa.remove_ip(server.name, floating_ip)
-        else:
-            LOG.error("Could not resolve %s into a hostname",
-                      payload.get('instance_id'))
+        ipa.remove_ip(floating_ip)
 
     @event_handlers('floatingip.update.end')
     def floating_ip_update(self, payload):
-        """ Neutron event"""
+        """Neutron event"""
         floatingip = payload.get('floatingip')
         floating_ip = floatingip.get('floating_ip_address')
         port_id = floatingip.get('port_id')
-        LOG.info("Neutron floating IP associate: %s" % floating_ip)
-        ipa = ipaclient()
-        nova = novaclient()
-        neutron = neutronclient()
-        search_opts = {'id': port_id}
-        ports = neutron.list_ports(**search_opts).get('ports')
-        if len(ports) == 1:
-            device_id = ports[0].get('device_id')
-            if device_id:
-                server = nova.servers.get(device_id)
-                if server:
-                    ipa.add_ip(server.name, floating_ip)
+        if port_id:
+            LOG.info("Neutron floating IP associate: %s" % floating_ip)
+            ipa = ipaclient()
+            nova = novaclient()
+            neutron = neutronclient()
+            search_opts = {'id': port_id}
+            ports = neutron.list_ports(**search_opts).get('ports')
+            if len(ports) == 1:
+                device_id = ports[0].get('device_id')
+                if device_id:
+                    server = nova.servers.get(device_id)
+                    if server:
+                        ipa.add_ip(server.name, floating_ip)
+            else:
+                LOG.error("Expected 1 port, got %d", len(ports))
         else:
-            LOG.error("Expected 1 port, got %d", len(ports))
+            LOG.info("Neutron floating IP disassociate: %s" % floating_ip)
+            ipa.remove_ip(floating_ip)
 
     def delete_subhosts(self, ipa, hostname_short, metadata):
         """Delete subhosts and remove VIPs if possible.
