@@ -97,9 +97,15 @@ class TestEnrollment(testtools.TestCase):
             metadata = {"ipa_enroll": "True"})
 
         server = self.conn.compute.wait_for_server(self._server)
-        self.conn.compute.add_floating_ip_to_server(
-            server, self._ip.floating_ip_address)
         return server
+
+    def _associate_floating_ip(self):
+        self.conn.compute.add_floating_ip_to_server(
+            self._server, self._ip.floating_ip_address)
+
+    def _disassociate_floating_ip(self):
+        self.conn.compute.remove_floating_ip_from_server(
+            self._server, self._ip.floating_ip_address)
 
     def _delete_server(self):
         if self._server:
@@ -116,8 +122,24 @@ class TestEnrollment(testtools.TestCase):
         self.assertFalse(
             self.ipaclient.find_host(TEST_INSTANCE + EXAMPLE_DOMAIN))
 
+    @loopingcall.RetryDecorator(50, 5, 5, (AssertionError,))
+    def _check_ip_record_added(self):
+        self.assertTrue(
+            self.ipaclient.find_record(self._ip.floating_ip_address))
+
+    @loopingcall.RetryDecorator(50, 5, 5, (AssertionError,))
+    def _check_ip_record_removed(self):
+        self.assertFalse(
+            self.ipaclient.find_record(self._ip.floating_ip_address))
+
     def test_enroll_server(self):
         self._create_server()
+        self._associate_floating_ip()
         self._check_ipa_client_created()
+        self._check_ip_record_added()
+        self._disassociate_floating_ip()
+        self._check_ip_record_removed()
+        self._associate_floating_ip()
+        self._check_ip_record_added()
         self._delete_server()
         self._check_ipa_client_deleted()

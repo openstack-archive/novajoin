@@ -36,6 +36,10 @@
   become: true
   become_user: stack
 
+- name: Restart neutron services
+  command: systemctl restart devstack@q-*
+  become: true
+
 - name: Restart nova services
   command: systemctl restart devstack@n-*
   become: true
