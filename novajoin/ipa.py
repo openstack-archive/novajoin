@@ -511,16 +511,27 @@ class IPAClient(IPANovaJoinBase):
             LOG.debug('IPA is not configured')
             return
 
-        params = [{"__dns_name__": get_domain() + "."},
-                  {"__dns_name__": hostname}]
-        kw = {'a_part_ip_address': floating_ip}
+        params = [six.text_type(get_domain() + '.'),
+                  six.text_type(hostname)]
+        kw = {'a_part_ip_address': six.text_type(floating_ip)}
 
         try:
             self._call_ipa('dnsrecord_add', *params, **kw)
         except (errors.DuplicateEntry, errors.ValidationError):
             pass
 
-    def remove_ip(self, hostname, floating_ip):
+    def find_record(self, floating_ip):
+        """Find DNS A record for floating IP address"""
+        LOG.debug('looking up host for floating ip' + floating_ip)
+        params = [six.text_type(get_domain() + '.')]
+        service_args = {'arecord': six.text_type(floating_ip)}
+        result = self._call_ipa('dnsrecord_find', *params, **service_args)
+        if result['count'] == 0:
+            return
+        assert(result['count'] == 1)
+        return result['result'][0]['idnsname'][0].to_unicode()
+
+    def remove_ip(self, floating_ip):
         """Remove a floating IP from a given hostname."""
         LOG.debug('In remove_ip')
 
@@ -528,4 +539,12 @@ class IPAClient(IPANovaJoinBase):
             LOG.debug('IPA is not configured')
             return
 
-        LOG.debug('Current a no-op')
+        hostname = self.find_record(floating_ip)
+        if not hostname:
+            LOG.debug('floating IP record not found')
+            return
+
+        params = [six.text_type(get_domain() + '.'), hostname]
+        service_args = {'arecord': six.text_type(floating_ip)}
+
+        self._call_ipa('dnsrecord_del', *params, **service_args)
