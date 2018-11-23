@@ -21,9 +21,11 @@ import json
 import sys
 import time
 
+import glanceclient as glance_client
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 from novajoin import config
+from novajoin import exception
 from novajoin.ipa import IPAClient
 from novajoin import join
 from novajoin.keystone_client import get_session
@@ -57,12 +59,53 @@ def neutronclient():
     return neutron_client.Client(session=session)
 
 
+def glanceclient():
+    session = get_session()
+    return glance_client.Client('2', session=session)
+
+
 class Registry(dict):
-    def __call__(self, name):
-        def decorator(fun):
+    def __call__(self, name, version=None):
+        def register_event(fun):
+            if version:
+                def check_nova_event(sself, payload):
+                    self.check_version(payload, version)
+                    return fun(sself, payload['nova_object.data'])
+                self[name] = check_nova_event
+                return check_nova_event
             self[name] = fun
             return fun
-        return decorator
+        return register_event
+
+    @staticmethod
+    def check_version(payload, expected_version):
+        """Check nova notification version
+
+        If actual's major version is different from expected, a
+        NotificationVersionMismatch error is raised.
+        If the minor versions are different, a DEBUG level log
+        message is output
+        """
+        notification_version = payload['nova_object.version']
+        notification_name = payload['nova_object.name']
+
+        maj_ver, min_ver = map(int, notification_version.split('.'))
+        expected_maj, expected_min = map(int, expected_version.split('.'))
+        if maj_ver != expected_maj:
+            raise exception.NotificationVersionMismatch(
+                provided_maj=maj_ver, provided_min=min_ver,
+                expected_maj=expected_maj, expected_min=expected_min,
+                type=notification_name)
+
+        if min_ver != expected_min:
+            LOG.debug(
+                "Notification %(type)s minor version mismatch, "
+                "provided: %(provided_maj)s.%(provided_min)s, "
+                "expected: %(expected_maj)s.%(expected_min)s.",
+                {"type": notification_name,
+                 "provided_maj": maj_ver, "provided_min": min_ver,
+                 "expected_maj": expected_maj, "expected_min": expected_min}
+            )
 
 
 class NotificationEndpoint(object):
@@ -90,19 +133,19 @@ class NotificationEndpoint(object):
         event_handler(self, payload)
 
     @event_handlers('compute.instance.create.end')
-    def instance_create(self, payload):
+    def compute_instance_create(self, payload):
         hostname = self._generate_hostname(payload.get('hostname'))
-        instance_id = payload.get('instance_id')
+        instance_id = payload['instance_id']
         LOG.info("Add new host %s (%s)", instance_id, hostname)
 
     @event_handlers('compute.instance.update')
-    def instance_update(self, payload):
+    def compute_instance_update(self, payload):
         ipa = ipaclient()
         join_controller = join.JoinController(ipa)
-        hostname_short = payload.get('hostname')
-        instance_id = payload.get('instance_id')
-        payload_metadata = payload.get('metadata')
-        image_metadata = payload.get('image_meta')
+        hostname_short = payload['hostname']
+        instance_id = payload['instance_id']
+        payload_metadata = payload['metadata']
+        image_metadata = payload['image_meta']
 
         hostname = self._generate_hostname(hostname_short)
 
@@ -133,11 +176,11 @@ class NotificationEndpoint(object):
         ipa.flush_batch_operation()
 
     @event_handlers('compute.instance.delete.end')
-    def instance_delete(self, payload):
-        hostname_short = payload.get('hostname')
-        instance_id = payload.get('instance_id')
-        payload_metadata = payload.get('metadata')
-        image_metadata = payload.get('image_meta')
+    def compute_instance_delete(self, payload):
+        hostname_short = payload['hostname']
+        instance_id = payload['instance_id']
+        payload_metadata = payload['metadata']
+        image_metadata = payload['image_meta']
 
         hostname = self._generate_hostname(hostname_short)
 
@@ -156,20 +199,20 @@ class NotificationEndpoint(object):
 
     @event_handlers('network.floating_ip.associate')
     def floaitng_ip_associate(self, payload):
-        floating_ip = payload.get('floating_ip')
+        floating_ip = payload['floating_ip']
         LOG.info("Associate floating IP %s" % floating_ip)
         ipa = ipaclient()
         nova = novaclient()
-        server = nova.servers.get(payload.get('instance_id'))
+        server = nova.servers.get(payload['instance_id'])
         if server:
-            ipa.add_ip(server.get, floating_ip)
+            ipa.add_ip(server.name, floating_ip)
         else:
             LOG.error("Could not resolve %s into a hostname",
-                      payload.get('instance_id'))
+                      payload['instance_id'])
 
     @event_handlers('network.floating_ip.disassociate')
     def floating_ip_disassociate(self, payload):
-        floating_ip = payload.get('floating_ip')
+        floating_ip = payload['floating_ip']
         LOG.info("Disassociate floating IP %s" % floating_ip)
         ipa = ipaclient()
         ipa.remove_ip(floating_ip)
@@ -177,9 +220,9 @@ class NotificationEndpoint(object):
     @event_handlers('floatingip.update.end')
     def floating_ip_update(self, payload):
         """Neutron event"""
-        floatingip = payload.get('floatingip')
-        floating_ip = floatingip.get('floating_ip_address')
-        port_id = floatingip.get('port_id')
+        floatingip = payload['floatingip']
+        floating_ip = floatingip['floating_ip_address']
+        port_id = floatingip['port_id']
         ipa = ipaclient()
         if port_id:
             LOG.info("Neutron floating IP associate: %s" % floating_ip)
@@ -295,6 +338,48 @@ class NotificationEndpoint(object):
         return host
 
 
+class VersionedNotificationEndpoint(NotificationEndpoint):
+
+    filter_rule = oslo_messaging.notify.filter.NotificationFilter(
+        publisher_id='^nova-compute.*|^network.*',
+        event_type='^instance.create.end|'
+                   '^instance.delete.end|'
+                   '^instance.update|'
+                   '^floatingip.update.end')
+
+    event_handlers = Registry(NotificationEndpoint.event_handlers)
+
+    @event_handlers('instance.create.end', '1.10')
+    def instance_create(self, payload):
+        newpayload = {
+            'hostname': payload['host_name'],
+            'instance_id': payload['uuid'],
+        }
+        self.compute_instance_create(newpayload)
+
+    @event_handlers('instance.update', '1.8')
+    def instance_update(self, payload):
+        glance = glanceclient()
+        newpayload = {
+            'hostname': payload['host_name'],
+            'instance_id': payload['uuid'],
+            'metadata': payload['metadata'],
+            'image_meta': glance.images.get(payload['image_uuid'])
+        }
+        self.compute_instance_update(newpayload)
+
+    @event_handlers('instance.delete.end', '1.7')
+    def instance_delete(self, payload):
+        glance = glanceclient()
+        newpayload = {
+            'hostname': payload['host_name'],
+            'instance_id': payload['uuid'],
+            'metadata': payload['metadata'],
+            'image_meta': glance.images.get(payload['image_uuid'])
+        }
+        self.compute_instance_delete(newpayload)
+
+
 def main():
     register_keystoneauth_opts(CONF)
     CONF(sys.argv[1:], version='1.0.21',
@@ -303,7 +388,10 @@ def main():
 
     transport = oslo_messaging.get_notification_transport(CONF)
     targets = [oslo_messaging.Target(topic=CONF.notifications_topic)]
-    endpoints = [NotificationEndpoint()]
+    if CONF.notification_format == 'unversioned':
+        endpoints = [NotificationEndpoint()]
+    elif CONF.notification_format == 'versioned':
+        endpoints = [VersionedNotificationEndpoint()]
 
     server = oslo_messaging.get_notification_listener(transport,
                                                       targets,

@@ -151,3 +151,9 @@ class ImageNotFound(NotFound):
 
 class PolicyNotAuthorized(NotAuthorized):
     message = "Policy doesn't allow %(action)s to be performed."
+
+
+class NotificationVersionMismatch(JoinException):
+    message = ("Provided notification version "
+               "%(provided_maj)s.%(provided_min)s did not match expected "
+               "%(expected_maj)s.%(expected_min)s for %(type)s")

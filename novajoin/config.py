@@ -51,6 +51,14 @@ service_opts = [
                help='Number retries when downloading an image from glance'),
     cfg.StrOpt('auth_strategy', default='keystone',
                help='Strategy to use for authentication.'),
+    cfg.StrOpt('notification_format', default='unversioned',
+               choices=[
+                   ('versioned',
+                    'Only the new versioned notifications are read'),
+                   ('unversioned',
+                    'Only the legacy unversioned notifications are read'),
+               ],
+               help='The format of notifications to read.'),
     cfg.StrOpt('notifications_topic', default='novajoin_notifications',
                help='Topic on which to listen to notifications.'),
 ]
