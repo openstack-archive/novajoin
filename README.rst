@@ -117,6 +117,8 @@ novajoin REST service and enable notifications in
 
 .. note::
    Notifications have to be also enabled and configured on nova computes!
+   See also information about enabling versioned and neutron notifications
+   in the `Notification listener Configuration`_ section below.
 
 Novajoin enables keystone authentication by default, as seen in
 **/etc/novajoin/join-api-paste.ini**. So credentials need to be set for
@@ -217,14 +219,27 @@ send notifications to the novajoin topic in /etc/nova/nova.conf::
 
     [oslo_messaging_notifications]
     ...
-    topics=notifications,novajoin_notifications
+    topics = notifications,novajoin_notifications
+
+In case of versioned notifications the configuration will look differently::
+
+    [notifications]
+    notify_on_state_change = vm_state
+    notification_format = versioned
+    versioned_notifications_topics = versioned_notifications,novajoin_notifications
 
 .. note::
    Notifications have to be also enabled and configured on nova computes!
 
-If you simply use notifications and ceilometer is running then the
-notifications will be roughly split between the two services in a
-round-robin format.
+To enable neutron notifications, in /etc/neutron/neutron.conf::
+
+    [oslo_messaging_notifications]
+    driver = messagingv2
+    topics = notifications,novajoin_notifications
+
+If you use notifications without changing the topic and ceilometer is
+running, then the notifications will be roughly split between the two
+services in a round-robin fashion.
 
 Usage
 =====

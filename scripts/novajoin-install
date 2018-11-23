@@ -138,6 +138,12 @@ def install(opts):
     config.set('keystone_authtoken', 'project_domain_name', 'default')
     config.set('keystone_authtoken', 'user_domain_id', 'default')
 
+    if opts.notification_format == 'versioned':
+        config.set('DEFAULT', 'notification_format', 'versioned')
+    else:
+        config.set('DEFAULT', 'notification_format', 'unversioned')
+
+    config.set('DEFAULT', 'notifications_topic', 'novajoin_notifications')
 
     with open(opts.novajoin_conf, 'w') as f:
         config.write(f)
@@ -193,13 +199,21 @@ def install(opts):
                    'notify_on_state_change',
                    'vm_state')
 
-        config.set('notifications',
-                   'notification_format',
-                   'unversioned')
+        if opts.notification_format == 'versioned':
+            config.set('notifications',
+                       'notification_format',
+                       'versioned')
+            config.set('notifications',
+                       'versioned_notifications_topics',
+                       'versioned_notifications,novajoin_notifications')
+        else:
+            config.set('notifications',
+                       'notification_format',
+                       'unversioned')
+            config.set('oslo_messaging_notifications',
+                       'topics',
+                       'notifications,novajoin_notifications')
 
-        config.set('oslo_messaging_notifications',
-                   'topics',
-                   'notifications,novajoin_notifications')
         with open(conf, 'w') as f:
             config.write(f)
 
@@ -259,6 +273,10 @@ def parse_args():
     parser.add_argument('--novajoin-conf', dest='novajoin_conf',
                         help='novajoin configuration file',
                         default=JOINCONF)
+    parser.add_argument('--notification-format', dest='notification_format',
+                        help='The format of notifications to emit and read.',
+                        choices=['versioned', 'unversioned'],
+                        default='versioned')
     parser = configure_ipa.ipa_options(parser)
 
     opts = parser.parse_args()
