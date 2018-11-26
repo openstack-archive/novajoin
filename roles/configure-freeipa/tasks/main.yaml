@@ -1,5 +1,5 @@
 - name: Find Paramiko ssh_gss.py
-  command: python -c "from paramiko import ssh_gss; print(ssh_gss.__file__.rstrip('c'))"
+  command: python{{ python_version|default:'' }} -c "from paramiko import ssh_gss; print(ssh_gss.__file__.rstrip('c'))"
   register: ssh_gss_file
 
 - name: Patch Paramiko (https://github.com/paramiko/paramiko/pull/1311)
@@ -17,9 +17,7 @@
   become: true
 
 - name: Uninstall urllib3 to fix later conflict with python-urllib3 system package
-  pip:
-    name: urllib3
-    state: absent
+  command: python{{ python_version|default:'' }} -m pip remove urllib3
   become: true
 
 - name: Install FreeIPA
