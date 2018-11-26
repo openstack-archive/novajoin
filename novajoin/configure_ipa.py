@@ -56,7 +56,7 @@ import nss.nss as nss
 
 logger = logging.getLogger()
 
-allowed_chars = string.letters + string.digits
+allowed_chars = string.ascii_letters + string.digits
 
 KRB5_CONF_TMPL = """
 includedir /var/lib/sss/pubconf/krb5.include.d/

@@ -3,6 +3,7 @@ files/join.conf
 tools/lintstack.head.py
 *.pyc
 *.egg-info/
+.eggs/
 .tox
 .testrepository
 .stestr

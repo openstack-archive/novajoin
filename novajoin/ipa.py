@@ -105,7 +105,7 @@ class IPANovaJoinBase(object):
     def split_hostname(self, hostname):
         """Split a hostname into its host and domain parts"""
         parts = hostname.split('.')
-        domain = ('.'.join(parts[1:]) + '.').decode('UTF-8')
+        domain = six.text_type('.'.join(parts[1:]) + '.')
         return (parts[0], domain)
 
     def get_host_and_realm(self):
@@ -282,7 +282,7 @@ class IPAClient(IPANovaJoinBase):
         # 'description': 'IPA host for %s' % inst.display_description,
         hostargs = {
             'description': u'IPA host for OpenStack',
-            'userpassword': ipaotp.decode('UTF-8'),
+            'userpassword': six.text_type(ipaotp),
             'force': True  # we don't have an ip addr yet so
                            # use force to add anyway
         }
@@ -295,23 +295,23 @@ class IPAClient(IPANovaJoinBase):
             hostargs['nshostlocation'] = location
 
         modargs = {
-            'userpassword': ipaotp.decode('UTF-8'),
+            'userpassword': six.text_type(ipaotp),
         }
 
         try:
             self._call_ipa('host_mod', *params, **modargs)
-            self.host_cache[hostname] = ipaotp.decode('UTF-8')
+            self.host_cache[hostname] = six.text_type(ipaotp)
         except errors.NotFound:
             try:
                 self._call_ipa('host_add', *params, **hostargs)
-                self.host_cache[hostname] = ipaotp.decode('UTF-8')
+                self.host_cache[hostname] = six.text_type(ipaotp)
             except errors.DuplicateEntry:
                 # We have no idea what the OTP is for the existing host.
                 return False
             except (errors.ValidationError, errors.DNSNotARecordError):
                 # Assumes despite these exceptions the host was created
                 # and the OTP was set.
-                self.host_cache[hostname] = ipaotp.decode('UTF-8')
+                self.host_cache[hostname] = six.text_type(ipaotp)
         except errors.ValidationError:
             # Updating the OTP on an enrolled-host is not allowed
             # in IPA and really a no-op.
