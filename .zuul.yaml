@@ -3,6 +3,8 @@
       jobs:
         - novajoin-functional:
             voting: false
+        - novajoin-functional-py3:
+            voting: false
 
 - job:
     name: novajoin-functional
@@ -39,3 +41,14 @@
           # Disable Cinder services
           c-bak: false
           c-vol: false
+
+- job:
+    name: novajoin-functional-py3
+    description: |
+      Run functional tests under Python 3.
+    parent: novajoin-functional
+    nodeset: devstack-single-node-fedora-latest
+    vars:
+      tox_envlist: functional-py3
+      bindep_profile: test py3
+      python_version: 3

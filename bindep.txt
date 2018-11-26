@@ -3,3 +3,6 @@
 
 python-ipalib
 python-ipaclient
+
+python3-ipalib [py3]
+python3-ipaclient [py3]

@@ -1,10 +1,16 @@
 - name: Build novajoin
-  command: python setup.py build
+  command: python{{ python_version|default('') }} setup.py build
   args:
     chdir: '{{ zuul.project.src_dir }}'
 
+- name: Install novajoin requirements
+  command: python{{ python_version|default('') }} -m pip install -r requirements.txt
+  args:
+    chdir: '{{ zuul.project.src_dir }}'
+  become: true
+
 - name: Install novajoin
-  command: python setup.py install
+  command: python{{ python_version|default('') }} setup.py install
   args:
     chdir: '{{ zuul.project.src_dir }}'
   become: true
