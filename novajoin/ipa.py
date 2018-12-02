@@ -224,6 +224,14 @@ class IPANovaJoinBase(object):
                     self.__backoff()
                 else:
                     raise
+            except http_client.ResponseNotReady:
+                # NOTE(xek): This means that the server closed the socket,
+                # so keep-alive ended and we can't use that connection.
+                api.Backend.rpcclient.disconnect()
+                if self.backoff:
+                    self.__backoff()
+                else:
+                    raise
 
     def _ipa_client_configured(self):
         """Determine if the machine is an enrolled IPA client.
