@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# This script is installed in /usr/libexec for backward compatibility.
+# It calls novajoin-ipa-setup from the default $PATH.
+
+novajoin-ipa-setup $@
