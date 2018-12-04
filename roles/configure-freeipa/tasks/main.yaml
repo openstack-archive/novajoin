@@ -51,6 +51,19 @@
     state: stopped
   become: true
 
+- name: Workaround https://bugzilla.redhat.com/show_bug.cgi?id=1624606
+  file:
+    path: /etc/crypto-policies/local.d/nss-p11-kit.config
+    state: absent
+  register: nss_policy_workaround
+  ignore_errors: yes
+  become: true
+
+- name: Update crypto policies
+  command: update-crypto-policies
+  become: true
+  when: nss_policy_workaround.changed
+
 - name: Configure FreeIPA
   command: >
     ipa-server-install -U -r EXAMPLE.TEST
