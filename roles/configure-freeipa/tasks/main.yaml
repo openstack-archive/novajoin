@@ -51,6 +51,16 @@
     state: stopped
   become: true
 
+- name: Workaround https://bugzilla.redhat.com/show_bug.cgi?id=1624606
+  file:
+    path: /etc/crypto-policies/back-ends/nss.config
+    state: absent
+  become: true
+
+- name: Update crypto policies
+  command: update-crypto-policies
+  become: true
+
 - name: Configure FreeIPA
   command: >
     ipa-server-install -U -r EXAMPLE.TEST
