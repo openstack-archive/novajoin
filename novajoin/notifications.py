@@ -24,6 +24,10 @@ import time
 import glanceclient as glance_client
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
+from oslo_log import log as logging
+import oslo_messaging
+from oslo_serialization import jsonutils
+
 from novajoin import config
 from novajoin import exception
 from novajoin.ipa import IPAClient
@@ -31,11 +35,7 @@ from novajoin import join
 from novajoin.keystone_client import get_session
 from novajoin.keystone_client import register_keystoneauth_opts
 from novajoin.nova import get_instance
-from novajoin.util import get_domain
-from novajoin.util import get_fqdn
-from oslo_log import log as logging
-import oslo_messaging
-from oslo_serialization import jsonutils
+from novajoin import util
 
 
 CONF = config.CONF
@@ -169,10 +169,12 @@ class NotificationEndpoint(object):
             if key.startswith('managed_service_')]
         if managed_services:
             join_controller.handle_services(hostname, managed_services)
-        # compact json format
-        if 'compact_services' in payload_metadata:
+
+        compact_services = util.get_compact_services(payload_metadata)
+        if compact_services:
             join_controller.handle_compact_services(
-                hostname_short, payload_metadata.get('compact_services'))
+                hostname_short, compact_services)
+
         ipa.flush_batch_operation()
 
     @event_handlers('compute.instance.delete.end')
@@ -262,9 +264,10 @@ class NotificationEndpoint(object):
         if metadata is None:
             return
 
-        if 'compact_services' in metadata:
+        compact_services = util.get_compact_services(metadata)
+        if compact_services:
             self.handle_compact_services(ipa, hostname_short,
-                                         metadata.get('compact_services'))
+                                         compact_services)
         managed_services = [metadata[key] for key in metadata.keys()
                             if key.startswith('managed_service_')]
         if managed_services:
@@ -293,7 +296,7 @@ class NotificationEndpoint(object):
         for service_name, net_list in service_repr.items():
             for network in net_list:
                 host = "%s.%s" % (host_short, network)
-                principal_host = get_fqdn(host)
+                principal_host = util.get_fqdn(host)
 
                 # remove host
                 if principal_host not in hosts_found:
@@ -330,7 +333,7 @@ class NotificationEndpoint(object):
     def _generate_hostname(self, hostname):
         # FIXME: Don't re-calculate the hostname, fetch it from somewhere
         project = 'foo'
-        domain = get_domain()
+        domain = util.get_domain()
         if CONF.project_subdomain:
             host = '%s.%s.%s' % (hostname, project, domain)
         else:

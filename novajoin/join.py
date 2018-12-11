@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
 import logging
 import traceback
 import uuid
@@ -26,7 +25,7 @@ from novajoin.glance import get_default_image_service
 from novajoin.ipa import IPAClient
 from novajoin import keystone_client
 from novajoin.nova import get_instance
-from novajoin.util import get_fqdn
+from novajoin import util
 
 
 CONF = cfg.CONF
@@ -200,7 +199,7 @@ class JoinController(Controller):
 
         ipaotp = uuid.uuid4().hex
 
-        data['hostname'] = get_fqdn(hostname_short, project_name)
+        data['hostname'] = util.get_fqdn(hostname_short, project_name)
         _, realm = self.ipaclient.get_host_and_realm()
         data['krb_realm'] = realm
 
@@ -220,10 +219,11 @@ class JoinController(Controller):
                             if key.startswith('managed_service_')]
         if managed_services:
             self.handle_services(data['hostname'], managed_services)
-        # compact json format
-        if 'compact_services' in metadata:
-            self.handle_compact_services(hostname_short,
-                                         metadata.get('compact_services'))
+
+        compact_services = util.get_compact_services(metadata)
+        if compact_services:
+            self.handle_compact_services(hostname_short, compact_services)
+
         self.ipaclient.flush_batch_operation()
 
         return data
@@ -250,13 +250,13 @@ class JoinController(Controller):
 
             self.ipaclient.service_add_host(principal, base_host)
 
-    def handle_compact_services(self, base_host_short, service_repr_json):
+    def handle_compact_services(self, base_host_short, service_repr):
         """Make any host/principal assignments passed from metadata
 
-        This takes a representation of the services and networks where the
-        services are listening on, and forms appropriate hostnames/service
-        principals based on this information. The representation looks as the
-        following:
+        This takes a dictionary representation of the services and networks
+        where the services are listening on, and forms appropriate
+        hostnames/service principals based on this information.
+        The dictionary representation looks as the following:
 
             {
                 "service1": [
@@ -286,15 +286,14 @@ class JoinController(Controller):
         """
         LOG.debug("In handle compact services")
 
-        service_repr = json.loads(service_repr_json)
         hosts_found = list()
         services_found = list()
-        base_host = get_fqdn(base_host_short)
+        base_host = util.get_fqdn(base_host_short)
 
         for service_name, net_list in service_repr.items():
             for network in net_list:
                 host_short = "%s.%s" % (base_host_short, network)
-                principal_host = get_fqdn(host_short)
+                principal_host = util.get_fqdn(host_short)
                 principal = "%s/%s" % (service_name, principal_host)
 
                 # add host if not present
