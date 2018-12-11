@@ -19,6 +19,7 @@ import uuid
 import webob.exc
 
 from oslo_config import cfg
+import six
 
 from novajoin import base
 from novajoin import exception
@@ -220,10 +221,22 @@ class JoinController(Controller):
                             if key.startswith('managed_service_')]
         if managed_services:
             self.handle_services(data['hostname'], managed_services)
-        # compact json format
+
+        # compact key-per-service
+        compact_services = dict()
+        for key, value in six.iteritems(metadata):
+            if key.startswith('compact_service_'):
+                compact_services[key.split('_')[-1]] = json.loads(value)
+        if compact_services:
+            self.handle_compact_services(hostname_short, compact_services)
+
+        # legacy compact json format
         if 'compact_services' in metadata:
+            legacy_compact_services = json.loads(
+                metadata.get('compact_services')
+            )
             self.handle_compact_services(hostname_short,
-                                         metadata.get('compact_services'))
+                                         legacy_compact_services)
         self.ipaclient.flush_batch_operation()
 
         return data
@@ -250,13 +263,13 @@ class JoinController(Controller):
 
             self.ipaclient.service_add_host(principal, base_host)
 
-    def handle_compact_services(self, base_host_short, service_repr_json):
+    def handle_compact_services(self, base_host_short, service_repr):
         """Make any host/principal assignments passed from metadata
 
-        This takes a representation of the services and networks where the
-        services are listening on, and forms appropriate hostnames/service
-        principals based on this information. The representation looks as the
-        following:
+        This takes a dictionary representation of the services and networks
+        where the services are listening on, and forms appropriate
+        hostnames/service principals based on this information.
+        The dictionary representation looks as the following:
 
             {
                 "service1": [
@@ -286,7 +299,6 @@ class JoinController(Controller):
         """
         LOG.debug("In handle compact services")
 
-        service_repr = json.loads(service_repr_json)
         hosts_found = list()
         services_found = list()
         base_host = get_fqdn(base_host_short)

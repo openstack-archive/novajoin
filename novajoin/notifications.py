@@ -24,6 +24,11 @@ import time
 import glanceclient as glance_client
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
+from oslo_log import log as logging
+import oslo_messaging
+from oslo_serialization import jsonutils
+import six
+
 from novajoin import config
 from novajoin import exception
 from novajoin.ipa import IPAClient
@@ -33,9 +38,6 @@ from novajoin.keystone_client import register_keystoneauth_opts
 from novajoin.nova import get_instance
 from novajoin.util import get_domain
 from novajoin.util import get_fqdn
-from oslo_log import log as logging
-import oslo_messaging
-from oslo_serialization import jsonutils
 
 
 CONF = config.CONF
@@ -169,10 +171,25 @@ class NotificationEndpoint(object):
             if key.startswith('managed_service_')]
         if managed_services:
             join_controller.handle_services(hostname, managed_services)
-        # compact json format
-        if 'compact_services' in payload_metadata:
+
+        # compact key-per-service
+        compact_services = dict()
+        for key, value in six.iteritems(payload_metadata):
+            if key.startswith('compact_service_'):
+                compact_services[key.split('_')[-1]] = json.loads(value)
+        if compact_services:
             join_controller.handle_compact_services(
-                hostname_short, payload_metadata.get('compact_services'))
+                hostname_short, compact_services
+            )
+
+        # legacy compact json format
+        if 'compact_services' in payload_metadata:
+            legacy_compact_services = json.loads(
+                payload_metadata.get('compact_services')
+            )
+            join_controller.handle_compact_services(
+                hostname_short, legacy_compact_services
+            )
         ipa.flush_batch_operation()
 
     @event_handlers('compute.instance.delete.end')
