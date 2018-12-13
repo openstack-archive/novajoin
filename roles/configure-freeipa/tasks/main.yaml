@@ -57,3 +57,10 @@
     --forwarder={{ unbound_primary_nameserver_v4 | default('1.1.1.1') }}
     --forwarder={{ unbound_secondary_nameserver_v4 | default('8.8.8.8') }}
   become: true
+
+- name: Devstack needs the newest decorator module
+  pip:
+    name: decorator
+    state: latest
+  become: true
+  when: python_version is not defined
