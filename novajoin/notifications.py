@@ -382,7 +382,7 @@ class VersionedNotificationEndpoint(NotificationEndpoint):
 
 def main():
     register_keystoneauth_opts(CONF)
-    CONF(sys.argv[1:], version='1.0.21',
+    CONF(sys.argv[1:], version='1.0.22',
          default_config_files=config.find_config_files())
     logging.setup(CONF, 'join')
 
