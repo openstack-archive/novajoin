@@ -19,6 +19,7 @@ The test uses the default demo project and credentials and assumes there is a
 centos-image present in Glance.
 """
 
+import json
 import os
 import testtools
 import uuid
@@ -94,10 +95,32 @@ class TestEnrollment(testtools.TestCase):
         self._server = self.conn.compute.create_server(
             name=TEST_INSTANCE, image_id=image.id, flavor_id=flavor.id,
             networks=[{"uuid": network.id}], key_name=self._key.name,
-            metadata = {"ipa_enroll": "True"})
+            metadata = {
+                "ipa_enroll": "True",
+                'compact_service_http': json.dumps(['test1', 'test2']),
+            })
 
         server = self.conn.compute.wait_for_server(self._server)
         return server
+
+    def _update_server_compact_service_new(self):
+        self.conn.compute.set_server_metadata(
+            self._server,
+            compact_service_rabbitmq=json.dumps(['test3', 'test4']))
+
+    def _update_server_compact_service_old(self):
+        self.conn.compute.delete_server_metadata(self._server, [
+            'compact_service_http', 'compact_service_rabbitmq'])
+        self.conn.compute.set_server_metadata(
+            self._server,
+            compact_services=json.dumps({'http': ['test5', 'test6']}))
+
+    @loopingcall.RetryDecorator(50, 5, 5, (AssertionError,))
+    def _check_server_compact_services(self, service_list):
+        services = [s.lower().split('.', 1)[0]
+                    for s in self.ipaclient.host_get_services(
+                        TEST_INSTANCE + EXAMPLE_DOMAIN)]
+        self.assertSetEqual(set(services), set(service_list))
 
     def _associate_floating_ip(self):
         self.conn.compute.add_floating_ip_to_server(
@@ -141,6 +164,20 @@ class TestEnrollment(testtools.TestCase):
         self._check_ip_record_removed()
         self._associate_floating_ip()
         self._check_ip_record_added()
+
+        self._check_server_compact_services(['http/test1', 'http/test2'])
+
+        self._update_server_compact_service_new()
+        self._check_server_compact_services([
+            'http/test1', 'http/test2',
+            'rabbitmq/test3', 'rabbitmq/test4'])
+
+        self._update_server_compact_service_old()
+        # NOTE(xek), novajoin doesn't support removing of services via update
+        self._check_server_compact_services([
+            'http/test1', 'http/test2', 'http/test5', 'http/test6',
+            'rabbitmq/test3', 'rabbitmq/test4'])
+
         self._delete_server()
         self._check_ipa_client_deleted()
         self._check_ip_record_removed()
