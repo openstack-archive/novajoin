@@ -57,3 +57,16 @@
     --forwarder={{ unbound_primary_nameserver_v4 | default('1.1.1.1') }}
     --forwarder={{ unbound_secondary_nameserver_v4 | default('8.8.8.8') }}
   become: true
+
+- name: Remove system python-decorator package which conflicts with devstack
+  command: rpm -e --nodeps python-decorator-3.4.0-3.el7.noarch
+  become: true
+  ignore_errors: yes
+  when: python_version is not defined
+
+- name: Install the latest decorator module for devstack
+  pip:
+    name: decorator
+    state: forcereinstall
+  become: true
+  when: python_version is not defined
