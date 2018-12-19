@@ -482,13 +482,17 @@ class IPAClient(IPANovaJoinBase):
                 return True
         return False
 
+    def host_get_services(self, service_host):
+        """Return list of services this host manages"""
+        LOG.debug('Checking host ' + service_host + ' services')
+        params = []
+        service_args = {'man_by_host': six.text_type(service_host)}
+        result = self._call_ipa('service_find', *params, **service_args)
+        return [service['krbprincipalname'][0] for service in result['result']]
+
     def host_has_services(self, service_host):
         """Return True if this host manages any services"""
-        LOG.debug('Checking if host ' + service_host + ' has services')
-        params = []
-        service_args = {'man_by_host': service_host}
-        result = self._call_ipa('service_find', *params, **service_args)
-        return result['count'] > 0
+        return len(self.host_get_services(service_host)) > 0
 
     def find_host(self, hostname):
         """Return True if this host exists"""
