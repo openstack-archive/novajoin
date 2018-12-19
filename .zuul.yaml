@@ -1,4 +1,9 @@
 - project:
+    templates:
+      - check-requirements
+      - openstack-python-jobs
+      - openstack-python36-jobs
+      - publish-to-pypi
     check:
       jobs:
         - novajoin-functional:
