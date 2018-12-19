@@ -21,6 +21,7 @@
     name: urllib3
     state: absent
   become: true
+  when: python_version is not defined
 
 - name: Install FreeIPA
   package:
@@ -35,6 +36,7 @@
   check_mode: true
   ignore_errors: yes
   register: mod_nss_check
+  become: true
 
 - name: Remove mod_ssl config which conflicts with FreeIPA
   file:
