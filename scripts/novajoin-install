@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # Copyright 2016 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -79,8 +79,7 @@ def install(opts):
         os.environ['OS_USERNAME']
         os.environ['OS_AUTH_URL']
     except KeyError as e:
-        raise ConfigurationError('%s environment variable not set.'
-                                 % e.message)
+        raise ConfigurationError('%s environment variable not set.' % e)
 
     try:
         pwd.getpwnam(opts.user)
@@ -89,11 +88,12 @@ def install(opts):
                                  opts.user)
 
     api.bootstrap(context='novajoin')
-    api.finalize()
 
     novajoin = configure_ipa.NovajoinRole(user=opts.user)
     if not opts.no_kinit:
         novajoin.kinit(opts.principal, api.env.realm, opts.password)
+
+    api.finalize()
 
     try:
         api.Backend.rpcclient.connect()
