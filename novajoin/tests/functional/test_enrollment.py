@@ -19,9 +19,9 @@ The test uses the default demo project and credentials and assumes there is a
 centos-image present in Glance.
 """
 
+import io
 import json
 import os
-import StringIO
 import testtools
 import time
 import uuid
@@ -147,7 +147,7 @@ class TestEnrollment(testtools.TestCase):
         # we wouldn't be able to connect to keystone from the same namespace.
 
         pkey = paramiko.RSAKey.from_private_key(
-            StringIO.StringIO(self._key.private_key))
+            io.StringIO(self._key.private_key))
         client = paramiko.SSHClient()
         client.load_system_host_keys()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -170,7 +170,7 @@ class TestEnrollment(testtools.TestCase):
         stdin, stdout, stderr = ssh.exec_command('id admin')
         self.assertRegex(
             'uid=\d+\(admin\) gid=\d+\(admins\) groups=\d+\(admins\)',
-            stdout.read())
+            stdout.read().decode())
 
     @loopingcall.RetryDecorator(200, 5, 5, (AssertionError,))
     def _check_ipa_client_created(self):
