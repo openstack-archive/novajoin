@@ -24,7 +24,6 @@ from novajoin import exception
 from novajoin.glance import get_default_image_service
 from novajoin.ipa import IPAClient
 from novajoin import keystone_client
-from novajoin.nova import get_instance
 from novajoin import util
 
 
@@ -161,18 +160,6 @@ class JoinController(Controller):
                 LOG.debug('IPA enrollment requested in image')
         else:
             LOG.debug('IPA enrollment requested as property')
-
-        # Ensure this instance exists in nova and retrieve the
-        # name of the user that requested it.
-        instance = get_instance(instance_id)
-        if instance is None:
-            msg = 'No such instance-id, %s' % instance_id
-            LOG.error(msg)
-            raise base.Fault(webob.exc.HTTPBadRequest(explanation=msg))
-
-        # TODO(rcritten): Eventually may check the user for permission
-        # as well using:
-        # user = keystone_client.get_user_name(instance.user_id)
 
         hostclass = metadata.get('ipa_hostclass')
         if hostclass:
