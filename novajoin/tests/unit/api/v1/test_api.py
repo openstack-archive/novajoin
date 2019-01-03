@@ -114,11 +114,8 @@ class JoinTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     @mock.patch('novajoin.ipa.SafeConfigParser')
-    @mock.patch('novajoin.join.get_instance')
     @mock.patch('novajoin.util.get_domain')
-    def test_valid_request(self, mock_get_domain,
-                           mock_get_instance, mock_conf_parser):
-        mock_get_instance.return_value = fake.fake_instance
+    def test_valid_request(self, mock_get_domain, mock_conf_parser):
         mock_get_domain.return_value = "test"
 
         mock_conf_parser_instance = mock.MagicMock()
@@ -152,13 +149,10 @@ class JoinTest(test.TestCase):
 
     @mock.patch('novajoin.ipa.SafeConfigParser')
     @mock.patch('novajoin.keystone_client.get_project_name')
-    @mock.patch('novajoin.join.get_instance')
     @mock.patch('novajoin.util.get_domain')
     def test_valid_hostclass_request(self, mock_get_domain,
-                                     mock_get_instance,
                                      mock_get_project_name,
                                      mock_conf_parser):
-        mock_get_instance.return_value = fake.fake_instance
         mock_get_domain.return_value = "test"
         mock_get_project_name.return_value = "test"
 
@@ -191,36 +185,9 @@ class JoinTest(test.TestCase):
         # because in all likelihood the keytab cannot be read (and
         # probably doesn't exist. This can be ignored.
 
-    @mock.patch('novajoin.join.get_instance')
-    def test_invalid_instance_id(self, mock_get_instance):
-        """Mock the instance to not exist so there is nothing to enroll."""
-        mock_get_instance.return_value = None
-
-        body = {"metadata": {"ipa_enroll": "True"},
-                "instance-id": "invalid",
-                "project-id": fake.PROJECT_ID,
-                "image-id": fake.IMAGE_ID,
-                "hostname": "test"}
-        req = fakes.HTTPRequest.blank('/v1')
-        req.method = 'POST'
-        req.content_type = "application/json"
-        req.body = jsonutils.dump_as_bytes(body)
-
-        # Not using assertRaises because the exception is wrapped as
-        # a Fault
-        try:
-            self.join_controller.create(req, body)
-        except Fault as fault:
-            assert fault.status_int == 400
-        else:
-            assert(False)
-
-    @mock.patch('novajoin.join.get_instance')
     @mock.patch('novajoin.keystone_client.get_project_name')
     @mock.patch('novajoin.util.get_domain')
-    def test_invalid_project_id(self, mock_get_domain, mock_get_project_name,
-                                mock_get_instance):
-        mock_get_instance.return_value = None
+    def test_invalid_project_id(self, mock_get_domain, mock_get_project_name):
         mock_get_project_name.return_value = None
         mock_get_domain.return_value = "test"
 
