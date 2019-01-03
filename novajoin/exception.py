@@ -127,10 +127,6 @@ class MalformedRequestBody(JoinException):
     message = "Malformed message body: %(reason)s"
 
 
-class GlanceConnectionFailed(JoinException):
-    message = "Connection to glance failed: %(reason)s"
-
-
 class ImageNotAuthorized(JoinException):
     message = "Not authorized for image %(image_id)s."
 

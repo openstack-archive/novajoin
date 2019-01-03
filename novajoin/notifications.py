@@ -20,7 +20,6 @@
 import sys
 import time
 
-import glanceclient as glance_client
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 from oslo_log import log as logging
@@ -56,11 +55,6 @@ def novaclient():
 def neutronclient():
     session = get_session()
     return neutron_client.Client(session=session)
-
-
-def glanceclient():
-    session = get_session()
-    return glance_client.Client('2', session=session)
 
 
 class Registry(dict):
@@ -144,13 +138,10 @@ class NotificationEndpoint(object):
         hostname_short = payload['hostname']
         instance_id = payload['instance_id']
         payload_metadata = payload['metadata']
-        image_metadata = payload['image_meta']
 
         hostname = self._generate_hostname(hostname_short)
 
-        enroll = payload_metadata.get('ipa_enroll', '')
-        image_enroll = image_metadata.get('ipa_enroll', '')
-        if enroll.lower() != 'true' and image_enroll.lower() != 'true':
+        if payload_metadata.get('ipa_enroll', '').lower() != 'true':
             LOG.info('IPA enrollment not requested, skipping update of %s',
                      hostname)
             return
@@ -181,14 +172,10 @@ class NotificationEndpoint(object):
         hostname_short = payload['hostname']
         instance_id = payload['instance_id']
         payload_metadata = payload['metadata']
-        image_metadata = payload['image_meta']
 
         hostname = self._generate_hostname(hostname_short)
 
-        enroll = payload_metadata.get('ipa_enroll', '')
-        image_enroll = image_metadata.get('ipa_enroll', '')
-
-        if enroll.lower() != 'true' and image_enroll.lower() != 'true':
+        if payload_metadata.get('ipa_enroll', '').lower() != 'true':
             LOG.info('IPA enrollment not requested, skipping delete of %s',
                      hostname)
             return
@@ -359,23 +346,19 @@ class VersionedNotificationEndpoint(NotificationEndpoint):
 
     @event_handlers('instance.update', '1.8')
     def instance_update(self, payload):
-        glance = glanceclient()
         newpayload = {
             'hostname': payload['host_name'],
             'instance_id': payload['uuid'],
-            'metadata': payload['metadata'],
-            'image_meta': glance.images.get(payload['image_uuid'])
+            'metadata': payload['metadata']
         }
         self.compute_instance_update(newpayload)
 
     @event_handlers('instance.delete.end', '1.7')
     def instance_delete(self, payload):
-        glance = glanceclient()
         newpayload = {
             'hostname': payload['host_name'],
             'instance_id': payload['uuid'],
-            'metadata': payload['metadata'],
-            'image_meta': glance.images.get(payload['image_uuid'])
+            'metadata': payload['metadata']
         }
         self.compute_instance_delete(newpayload)
 

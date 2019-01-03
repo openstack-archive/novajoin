@@ -21,7 +21,6 @@ from oslo_config import cfg
 
 from novajoin import base
 from novajoin import exception
-from novajoin.glance import get_default_image_service
 from novajoin.ipa import IPAClient
 from novajoin import keystone_client
 from novajoin import policy
@@ -124,36 +123,10 @@ class JoinController(Controller):
             raise base.Fault(webob.exc.HTTPBadRequest())
 
         metadata = body.get('metadata', {})
-        enroll = metadata.get('ipa_enroll', '').lower() == 'true'
 
-        if not enroll:
+        if metadata.get('ipa_enroll', '').lower() != 'true':
             LOG.debug('IPA enrollment not requested in instance creation')
-            # Check the image metadata to see if enrollment was requested
-
-            image_id = body.get('image-id')
-            if not image_id:
-                LOG.error('No image-id in request')
-                raise base.Fault(webob.exc.HTTPBadRequest())
-            image_service = get_default_image_service()
-            image_metadata = {}
-            try:
-                image = image_service.show(context, image_id)
-            except (exception.ImageNotFound,
-                    exception.ImageNotAuthorized) as e:
-                msg = 'Failed to get image: %s' % e
-                LOG.error(msg)
-                raise base.Fault(webob.exc.HTTPBadRequest(explanation=msg))
-            else:
-                image_metadata = image.get('properties', {})
-
-            enroll = image_metadata.get('ipa_enroll', '').lower() == 'true'
-            if not enroll:
-                LOG.debug('IPA enrollment not requested in image')
-                return {}
-            else:
-                LOG.debug('IPA enrollment requested in image')
-        else:
-            LOG.debug('IPA enrollment requested as property')
+            return {}
 
         hostclass = metadata.get('ipa_hostclass')
         if hostclass:
@@ -191,7 +164,7 @@ class JoinController(Controller):
 
         try:
             data['ipaotp'] = self.ipaclient.add_host(data['hostname'], ipaotp,
-                                                     metadata, image_metadata)
+                                                     metadata)
             if not data['ipaotp']:
                 # OTP was not added to host, don't return one
                 del data['ipaotp']
