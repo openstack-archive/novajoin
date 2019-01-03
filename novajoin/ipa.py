@@ -250,7 +250,7 @@ class IPAClient(IPANovaJoinBase):
     host_cache = cachetools.TTLCache(maxsize=512, ttl=30)
     service_cache = cachetools.TTLCache(maxsize=512, ttl=30)
 
-    def add_host(self, hostname, ipaotp, metadata=None, image_metadata=None):
+    def add_host(self, hostname, ipaotp, metadata=None):
         """Add a host to IPA.
 
         If requested in the metadata, add a host to IPA. The assumption
@@ -274,8 +274,6 @@ class IPAClient(IPANovaJoinBase):
 
         if metadata is None:
             metadata = {}
-        if image_metadata is None:
-            image_metadata = {}
 
         if hostname in self.host_cache:
             LOG.debug('Host  ' + hostname + ' found in cache.')
@@ -285,9 +283,6 @@ class IPAClient(IPANovaJoinBase):
 
         hostclass = metadata.get('ipa_hostclass', '')
         location = metadata.get('ipa_host_location', '')
-        osdistro = image_metadata.get('os_distro', '')
-        osver = image_metadata.get('os_version', '')
-        # 'description': 'IPA host for %s' % inst.display_description,
         hostargs = {
             'description': u'IPA host for OpenStack',
             'userpassword': six.text_type(ipaotp),
@@ -296,9 +291,6 @@ class IPAClient(IPANovaJoinBase):
         }
         if hostclass:
             hostargs['userclass'] = hostclass
-        if osdistro or osver:
-            hostargs['nsosversion'] = '%s %s' % (osdistro, osver)
-            hostargs['nsosversion'] = hostargs['nsosversion'].strip()
         if location:
             hostargs['nshostlocation'] = location
 

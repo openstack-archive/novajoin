@@ -53,20 +53,18 @@ class NotificationFormatsTest(test.TestCase):
         result = self._run_dispatcher(event)
         self.assertEqual(result, NotificationResult.REQUEUE)
 
-    @mock.patch('novajoin.notifications.glanceclient')
     @mock.patch('novajoin.notifications.ipaclient')
     @mock.patch('novajoin.notifications.NotificationEndpoint'
                 '._generate_hostname')
-    def test_instance_update(self, glanceclient, ipaclient, gen_hostname):
+    def test_instance_update(self, ipaclient, gen_hostname):
         event = self._get_event('instance.update.json')
         result = self._run_dispatcher(event)
         self.assertEqual(result, NotificationResult.HANDLED)
 
-    @mock.patch('novajoin.notifications.glanceclient')
     @mock.patch('novajoin.notifications.ipaclient')
     @mock.patch('novajoin.notifications.NotificationEndpoint'
                 '._generate_hostname')
-    def test_instance_delete(self, glanceclient, ipaclient, gen_hostname):
+    def test_instance_delete(self, ipaclient, gen_hostname):
         event = self._get_event('instance.delete.end.json')
         result = self._run_dispatcher(event)
         self.assertEqual(result, NotificationResult.HANDLED)

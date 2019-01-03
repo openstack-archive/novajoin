@@ -20,8 +20,6 @@ import webob.exc
 from oslo_config import cfg
 
 from novajoin import base
-from novajoin import exception
-from novajoin.glance import get_default_image_service
 from novajoin.ipa import IPAClient
 from novajoin import keystone_client
 from novajoin import util
@@ -112,7 +110,6 @@ class JoinController(Controller):
             raise base.Fault(webob.exc.HTTPBadRequest())
 
         instance_id = body.get('instance-id')
-        image_id = body.get('image-id')
         project_id = body.get('project-id')
         hostname_short = body.get('hostname')
         metadata = body.get('metadata', {})
@@ -125,41 +122,13 @@ class JoinController(Controller):
             LOG.error('No hostname in request')
             raise base.Fault(webob.exc.HTTPBadRequest())
 
-        if not image_id:
-            LOG.error('No image-id in request')
-            raise base.Fault(webob.exc.HTTPBadRequest())
-
         if not project_id:
             LOG.error('No project-id in request')
             raise base.Fault(webob.exc.HTTPBadRequest())
 
-        enroll = metadata.get('ipa_enroll', '')
-
-        if enroll.lower() != 'true':
+        if metadata.get('ipa_enroll', '').lower() != 'true':
             LOG.debug('IPA enrollment not requested in instance creation')
-
-        context = req.environ.get('novajoin.context')
-        image_service = get_default_image_service()
-        image_metadata = {}
-        try:
-            image = image_service.show(context, image_id)
-        except (exception.ImageNotFound, exception.ImageNotAuthorized) as e:
-            msg = 'Failed to get image: %s' % e
-            LOG.error(msg)
-            raise base.Fault(webob.exc.HTTPBadRequest(explanation=msg))
-        else:
-            image_metadata = image.get('properties', {})
-
-        # Check the image metadata to see if enrollment was requested
-        if enroll.lower() != 'true':
-            enroll = image_metadata.get('ipa_enroll', '')
-            if enroll.lower() != 'true':
-                LOG.debug('IPA enrollment not requested in image')
-                return {}
-            else:
-                LOG.debug('IPA enrollment requested in image')
-        else:
-            LOG.debug('IPA enrollment requested as property')
+            return {}
 
         hostclass = metadata.get('ipa_hostclass')
         if hostclass:
@@ -192,7 +161,7 @@ class JoinController(Controller):
 
         try:
             data['ipaotp'] = self.ipaclient.add_host(data['hostname'], ipaotp,
-                                                     metadata, image_metadata)
+                                                     metadata)
             if not data['ipaotp']:
                 # OTP was not added to host, don't return one
                 del data['ipaotp']
