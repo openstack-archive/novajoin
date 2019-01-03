@@ -23,14 +23,6 @@ from novajoin import test
 from novajoin.tests.unit.api import fakes
 from novajoin.tests.unit import fake_constants as fake
 
-import webob.exc
-
-
-class FakeImageService(object):
-    def show(self, context, image_id):
-        """Ok to return nothing, just means no image metadata."""
-        return {}
-
 
 class JoinTest(test.TestCase):
 
@@ -56,24 +48,6 @@ class JoinTest(test.TestCase):
     def test_no_instanceid(self):
         body = {"metadata": {"ipa_enroll": "True"},
                 "image-id": fake.IMAGE_ID,
-                "project-id": fake.PROJECT_ID,
-                "hostname": "test"}
-        req = fakes.HTTPRequest.blank('/v1/')
-        req.method = 'POST'
-        req.content_type = "application/json"
-
-        # Not using assertRaises because the exception is wrapped as
-        # a Fault
-        try:
-            self.join_controller.create(req, body)
-        except Fault as fault:
-            assert fault.status_int == 400
-        else:
-            assert(False)
-
-    def test_no_imageid(self):
-        body = {"metadata": {"ipa_enroll": "True"},
-                "instance-id": fake.INSTANCE_ID,
                 "project-id": fake.PROJECT_ID,
                 "hostname": "test"}
         req = fakes.HTTPRequest.blank('/v1/')
@@ -125,9 +99,7 @@ class JoinTest(test.TestCase):
         else:
             assert(False)
 
-    @mock.patch('novajoin.join.get_default_image_service')
-    def test_request_no_enrollment(self, mock_get_image):
-        mock_get_image.return_value = FakeImageService()
+    def test_request_no_enrollment(self):
         body = {"metadata": {"ipa_enroll": "False"},
                 "instance-id": fake.INSTANCE_ID,
                 "project-id": fake.PROJECT_ID,
@@ -141,34 +113,9 @@ class JoinTest(test.TestCase):
         res_dict = self.join_controller.create(req, body)
         self.assertEqual(expected, res_dict)
 
-    @mock.patch('novajoin.join.get_default_image_service')
-    def test_request_invalid_image(self, mock_get_image):
-        mock_get_image.side_effect = Fault(webob.exc.HTTPBadRequest())
-        body = {"metadata": {"ipa_enroll": "False"},
-                "instance-id": fake.INSTANCE_ID,
-                "project-id": fake.PROJECT_ID,
-                "image-id": "invalid",
-                "hostname": "test"}
-        req = fakes.HTTPRequest.blank('/v1')
-        req.method = 'POST'
-        req.content_type = "application/json"
-        req.body = jsonutils.dump_as_bytes(body)
-
-        # Not using assertRaises because the exception is wrapped as
-        # a Fault
-        try:
-            self.join_controller.create(req, body)
-        except Fault as fault:
-            assert fault.status_int == 400
-        else:
-            assert(False)
-
     @mock.patch('novajoin.ipa.SafeConfigParser')
-    @mock.patch('novajoin.join.get_default_image_service')
     @mock.patch('novajoin.util.get_domain')
-    def test_valid_request(self, mock_get_domain, mock_get_image,
-                           mock_conf_parser):
-        mock_get_image.return_value = FakeImageService()
+    def test_valid_request(self, mock_get_domain, mock_conf_parser):
         mock_get_domain.return_value = "test"
 
         mock_conf_parser_instance = mock.MagicMock()
@@ -202,12 +149,10 @@ class JoinTest(test.TestCase):
 
     @mock.patch('novajoin.ipa.SafeConfigParser')
     @mock.patch('novajoin.keystone_client.get_project_name')
-    @mock.patch('novajoin.join.get_default_image_service')
     @mock.patch('novajoin.util.get_domain')
-    def test_valid_hostclass_request(self, mock_get_domain, mock_get_image,
+    def test_valid_hostclass_request(self, mock_get_domain,
                                      mock_get_project_name,
                                      mock_conf_parser):
-        mock_get_image.return_value = FakeImageService()
         mock_get_domain.return_value = "test"
         mock_get_project_name.return_value = "test"
 
@@ -240,12 +185,9 @@ class JoinTest(test.TestCase):
         # because in all likelihood the keytab cannot be read (and
         # probably doesn't exist. This can be ignored.
 
-    @mock.patch('novajoin.join.get_default_image_service')
     @mock.patch('novajoin.keystone_client.get_project_name')
     @mock.patch('novajoin.util.get_domain')
-    def test_invalid_project_id(self, mock_get_domain, mock_get_project_name,
-                                mock_get_image):
-        mock_get_image.return_value = FakeImageService()
+    def test_invalid_project_id(self, mock_get_domain, mock_get_project_name):
         mock_get_project_name.return_value = None
         mock_get_domain.return_value = "test"
 
