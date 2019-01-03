@@ -75,15 +75,13 @@ class TestIPAService(testtools.TestCase):
         global hostname
         ipaotp = str(uuid.uuid4())
         metadata = {}
-        image_metadata = {}
-        self.ipaclient.add_host(hostname, ipaotp, metadata, image_metadata)
+        self.ipaclient.add_host(hostname, ipaotp, metadata)
 
     def test_host_add_again(self):
         global hostname
         ipaotp = str(uuid.uuid4())
         metadata = {}
-        image_metadata = {}
-        self.ipaclient.add_host(hostname, ipaotp, metadata, image_metadata)
+        self.ipaclient.add_host(hostname, ipaotp, metadata)
 
     def test_host_subhost(self):
         global hostname
@@ -110,11 +108,10 @@ class TestIPAService(testtools.TestCase):
         global hostname
         ipaotp = str(uuid.uuid4())
         metadata = {}
-        image_metadata = {}
         subhost = six.text_type(str(uuid.uuid4()) + '.' + api.env.domain)
         service_principal = u'test/%s' % subhost
-        self.ipaclient.add_host(hostname, ipaotp, metadata, image_metadata)
-        self.ipaclient.add_host(subhost, ipaotp, metadata, image_metadata)
+        self.ipaclient.add_host(hostname, ipaotp, metadata)
+        self.ipaclient.add_host(subhost, ipaotp, metadata)
         self.ipaclient.add_service(service_principal)
         self.ipaclient.service_add_host(service_principal, hostname)
         self.ipaclient.delete_subhost(subhost)
