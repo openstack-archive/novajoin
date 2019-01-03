@@ -24,7 +24,6 @@ from novajoin import exception
 from novajoin.glance import get_default_image_service
 from novajoin.ipa import IPAClient
 from novajoin import keystone_client
-from novajoin.nova import get_instance
 from novajoin import policy
 from novajoin import util
 
@@ -119,48 +118,36 @@ class JoinController(Controller):
         except exception.PolicyNotAuthorized:
             raise base.Fault(webob.exc.HTTPForbidden())
 
-        instance_id = body.get('instance-id')
-        image_id = body.get('image-id')
-        project_id = body.get('project-id')
         hostname_short = body.get('hostname')
-        metadata = body.get('metadata', {})
-
-        if not instance_id:
-            LOG.error('No instance-id in request')
-            raise base.Fault(webob.exc.HTTPBadRequest())
-
         if not hostname_short:
             LOG.error('No hostname in request')
             raise base.Fault(webob.exc.HTTPBadRequest())
 
-        if not image_id:
-            LOG.error('No image-id in request')
-            raise base.Fault(webob.exc.HTTPBadRequest())
+        metadata = body.get('metadata', {})
+        enroll = metadata.get('ipa_enroll', '').lower() == 'true'
 
-        if not project_id:
-            LOG.error('No project-id in request')
-            raise base.Fault(webob.exc.HTTPBadRequest())
-
-        enroll = metadata.get('ipa_enroll', '')
-
-        if enroll.lower() != 'true':
+        if not enroll:
             LOG.debug('IPA enrollment not requested in instance creation')
+            # Check the image metadata to see if enrollment was requested
 
-        image_service = get_default_image_service()
-        image_metadata = {}
-        try:
-            image = image_service.show(context, image_id)
-        except (exception.ImageNotFound, exception.ImageNotAuthorized) as e:
-            msg = 'Failed to get image: %s' % e
-            LOG.error(msg)
-            raise base.Fault(webob.exc.HTTPBadRequest(explanation=msg))
-        else:
-            image_metadata = image.get('properties', {})
+            image_id = body.get('image-id')
+            if not image_id:
+                LOG.error('No image-id in request')
+                raise base.Fault(webob.exc.HTTPBadRequest())
+            image_service = get_default_image_service()
+            image_metadata = {}
+            try:
+                image = image_service.show(context, image_id)
+            except (exception.ImageNotFound,
+                    exception.ImageNotAuthorized) as e:
+                msg = 'Failed to get image: %s' % e
+                LOG.error(msg)
+                raise base.Fault(webob.exc.HTTPBadRequest(explanation=msg))
+            else:
+                image_metadata = image.get('properties', {})
 
-        # Check the image metadata to see if enrollment was requested
-        if enroll.lower() != 'true':
-            enroll = image_metadata.get('ipa_enroll', '')
-            if enroll.lower() != 'true':
+            enroll = image_metadata.get('ipa_enroll', '').lower() == 'true'
+            if not enroll:
                 LOG.debug('IPA enrollment not requested in image')
                 return {}
             else:
@@ -168,22 +155,15 @@ class JoinController(Controller):
         else:
             LOG.debug('IPA enrollment requested as property')
 
-        # Ensure this instance exists in nova and retrieve the
-        # name of the user that requested it.
-        instance = get_instance(instance_id)
-        if instance is None:
-            msg = 'No such instance-id, %s' % instance_id
-            LOG.error(msg)
-            raise base.Fault(webob.exc.HTTPBadRequest(explanation=msg))
-
-        # TODO(rcritten): Eventually may check the user for permission
-        # as well using:
-        # user = keystone_client.get_user_name(instance.user_id)
-
         hostclass = metadata.get('ipa_hostclass')
         if hostclass:
             # Only look up project_name when hostclass is requested to
             # save a round-trip with Keystone.
+            project_id = body.get('project-id')
+            if not project_id:
+                LOG.error('No project-id in request')
+                raise base.Fault(webob.exc.HTTPBadRequest())
+
             project_name = keystone_client.get_project_name(project_id)
             if project_name is None:
                 msg = 'No such project-id, %s' % project_id
