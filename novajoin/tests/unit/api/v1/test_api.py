@@ -18,6 +18,7 @@ from oslo_serialization import jsonutils
 from testtools.matchers import MatchesRegex
 
 from novajoin.base import Fault
+from novajoin import config
 from novajoin import join
 from novajoin import test
 from novajoin.tests.unit.api import fakes
@@ -36,6 +37,7 @@ class JoinTest(test.TestCase):
 
     def setUp(self):
         self.join_controller = join.JoinController()
+        config.CONF([])
         super(JoinTest, self).setUp()
 
     def test_no_body(self):
@@ -50,6 +52,21 @@ class JoinTest(test.TestCase):
             self.join_controller.create(req, body)
         except Fault as fault:
             assert fault.status_int == 400
+        else:
+            assert(False)
+
+    def test_unauthorized(self):
+        body = {'test': 'test'}
+        req = fakes.HTTPRequest.blank('/v1/', use_nova_context=False)
+        req.method = 'POST'
+        req.content_type = "application/json"
+
+        # Not using assertRaises because the exception is wrapped as
+        # a Fault
+        try:
+            self.join_controller.create(req, body)
+        except Fault as fault:
+            assert fault.status_int == 403
         else:
             assert(False)
 

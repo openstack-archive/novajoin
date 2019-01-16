@@ -1,5 +1,6 @@
 build
 files/join.conf
+files/policy.yaml.sample
 tools/lintstack.head.py
 *.pyc
 *.egg-info/
