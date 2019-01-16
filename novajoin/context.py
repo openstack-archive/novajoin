@@ -22,8 +22,6 @@ import copy
 from oslo_config import cfg
 from oslo_context import context
 from oslo_log import log as logging
-from oslo_utils import timeutils
-import six
 
 from novajoin import policy
 
@@ -39,54 +37,9 @@ class RequestContext(context.RequestContext):
     Represents the user taking a given action within the system.
 
     """
-    def __init__(self, user_id, project_id, is_admin=None, read_deleted="no",
-                 roles=None, project_name=None, remote_address=None,
-                 timestamp=None, request_id=None, auth_token=None,
-                 overwrite=True, quota_class=None, service_catalog=None,
-                 domain=None, user_domain=None, project_domain=None,
-                 **kwargs):
-        """Initialize RequestContext.
+    def __init__(self, *args, **kwargs):
 
-        :param read_deleted: 'no' indicates deleted records are hidden, 'yes'
-            indicates deleted records are visible, 'only' indicates that
-            *only* deleted records are visible.
-
-        :param overwrite: Set to False to ensure that the greenthread local
-            copy of the index is not overwritten.
-
-        :param kwargs: Extra arguments that might be present, but we ignore
-            because they possibly came in from older rpc messages.
-        """
-
-        super(RequestContext, self).__init__(auth_token=auth_token,
-                                             user=user_id,
-                                             tenant=project_id,
-                                             domain=domain,
-                                             user_domain=user_domain,
-                                             project_domain=project_domain,
-                                             is_admin=is_admin,
-                                             request_id=request_id,
-                                             overwrite=overwrite,
-                                             roles=roles)
-        self.project_name = project_name
-        self.read_deleted = read_deleted
-        self.remote_address = remote_address
-        if not timestamp:
-            timestamp = timeutils.utcnow()
-        elif isinstance(timestamp, six.string_types):
-            timestamp = timeutils.parse_isotime(timestamp)
-        self.timestamp = timestamp
-        self.quota_class = quota_class
-
-        if service_catalog:
-            # Only include required parts of service_catalog
-            self.service_catalog = [s for s in service_catalog
-                                    if s.get('type') in
-                                    ('identity', 'compute', 'object-store',
-                                     'image')]
-        else:
-            # if list is empty or none
-            self.service_catalog = []
+        super(RequestContext, self).__init__(*args, **kwargs)
 
         # We need to have RequestContext attributes defined
         # when policy.check_is_admin invokes request logging
@@ -96,38 +49,13 @@ class RequestContext(context.RequestContext):
         elif self.is_admin and 'admin' not in self.roles:
             self.roles.append('admin')
 
-    def _get_read_deleted(self):
-        return self._read_deleted
-
-    def _set_read_deleted(self, read_deleted):
-        if read_deleted not in ('no', 'yes', 'only'):
-            raise ValueError("read_deleted can only be one of 'no', "
-                             "'yes' or 'only', not %r") % read_deleted
-        self._read_deleted = read_deleted
-
-    def _del_read_deleted(self):
-        del self._read_deleted
-
-    read_deleted = property(_get_read_deleted, _set_read_deleted,
-                            _del_read_deleted)
-
     def to_dict(self):
         result = super(RequestContext, self).to_dict()
         result['user_id'] = self.user_id
+        result['user_name'] = self.user_name
         result['project_id'] = self.project_id
         result['project_name'] = self.project_name
-        result['domain'] = self.domain
-        result['read_deleted'] = self.read_deleted
-        result['remote_address'] = self.remote_address
-        result['timestamp'] = self.timestamp.isoformat()
-        result['quota_class'] = self.quota_class
-        result['service_catalog'] = self.service_catalog
-        result['request_id'] = self.request_id
         return result
-
-    @classmethod
-    def from_dict(cls, values):
-        return cls(**values)
 
     def elevated(self, read_deleted=None, overwrite=False):
         """Return a version of this context with admin flag set."""
@@ -144,25 +72,3 @@ class RequestContext(context.RequestContext):
 
     def deepcopy(self):
         return copy.deepcopy(self)
-
-    # NOTE(sirp): the openstack/common version of RequestContext uses
-    # tenant/user whereas the Cinder version uses project_id/user_id.
-    # NOTE(adrienverge): The Cinder version of RequestContext now uses
-    # tenant/user internally, so it is compatible with context-aware code from
-    # openstack/common. We still need this shim for the rest of Cinder's
-    # code.
-    @property
-    def project_id(self):
-        return self.tenant
-
-    @project_id.setter
-    def project_id(self, value):
-        self.tenant = value
-
-    @property
-    def user_id(self):
-        return self.user
-
-    @user_id.setter
-    def user_id(self, value):
-        self.user = value

@@ -34,11 +34,22 @@ class HTTPRequest(webob.Request):
             if 'v1' in args[0]:
                 kwargs['base_url'] = 'http://localhost/v1'
         use_admin_context = kwargs.pop('use_admin_context', False)
+        use_nova_service_context = kwargs.pop('use_nova_context', True)
         version = kwargs.pop('version', '1.0')
         out = base.Request.blank(*args, **kwargs)
-        out.environ['cinder.context'] = FakeRequestContext(
-            fake.USER_ID,
-            fake.PROJECT_ID,
-            is_admin=use_admin_context)
+        if use_nova_service_context:
+            out.environ['novajoin.context'] = FakeRequestContext(
+                user_id=fake.USER_ID,
+                user_name='nova',
+                roles=['service'],
+                project_id=fake.PROJECT_ID,
+                is_admin=use_admin_context)
+        else:
+            out.environ['novajoin.context'] = FakeRequestContext(
+                user_id=fake.USER_ID,
+                user_name='not_nova',
+                roles=['not_service'],
+                project_id=fake.PROJECT_ID,
+                is_admin=use_admin_context)
         out.api_version_request = Join(version)
         return out

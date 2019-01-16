@@ -131,10 +131,6 @@ class GlanceConnectionFailed(JoinException):
     message = "Connection to glance failed: %(reason)s"
 
 
-class ImageLimitExceeded(JoinException):
-    message = "Image quota exceeded"
-
-
 class ImageNotAuthorized(JoinException):
     message = "Not authorized for image %(image_id)s."
 

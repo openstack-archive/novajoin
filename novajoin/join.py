@@ -25,6 +25,7 @@ from novajoin.glance import get_default_image_service
 from novajoin.ipa import IPAClient
 from novajoin import keystone_client
 from novajoin.nova import get_instance
+from novajoin import policy
 from novajoin import util
 
 
@@ -112,6 +113,12 @@ class JoinController(Controller):
             LOG.error('No body in create request')
             raise base.Fault(webob.exc.HTTPBadRequest())
 
+        context = req.environ.get('novajoin.context')
+        try:
+            policy.authorize_action(context, 'join:create')
+        except exception.PolicyNotAuthorized:
+            raise base.Fault(webob.exc.HTTPForbidden())
+
         instance_id = body.get('instance-id')
         image_id = body.get('image-id')
         project_id = body.get('project-id')
@@ -139,7 +146,6 @@ class JoinController(Controller):
         if enroll.lower() != 'true':
             LOG.debug('IPA enrollment not requested in instance creation')
 
-        context = req.environ.get('novajoin.context')
         image_service = get_default_image_service()
         image_metadata = {}
         try:
