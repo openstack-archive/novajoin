@@ -41,15 +41,17 @@ class HTTPRequest(webob.Request):
             out.environ['novajoin.context'] = FakeRequestContext(
                 user_id=fake.USER_ID,
                 user_name='nova',
-                roles=['service'],
+                roles=[],
                 project_id=fake.PROJECT_ID,
+                project_name='service',
                 is_admin=use_admin_context)
         else:
             out.environ['novajoin.context'] = FakeRequestContext(
                 user_id=fake.USER_ID,
                 user_name='not_nova',
-                roles=['not_service'],
+                roles=[],
                 project_id=fake.PROJECT_ID,
+                project_name='not_service',
                 is_admin=use_admin_context)
         out.api_version_request = Join(version)
         return out
