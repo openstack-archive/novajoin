@@ -33,8 +33,8 @@ _RULES = [
         'context_is_admin', 'role:admin',
         "Decides what is required for the 'is_admin:True' check to succeed."),
     policy.RuleDefault(
-        'service_role', 'role:service',
-        "service role"),
+        'service_project', 'project_name:service',
+        "service project"),
     policy.RuleDefault(
         'compute_service_user', 'user_name:nova and rule:service_role',
         "This is usualy the nova service user, which calls the novajoin API, "
