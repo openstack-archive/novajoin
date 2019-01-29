@@ -187,7 +187,7 @@ class IPANovaJoinBase(object):
     def _add_batch_operation(self, command, *args, **kw):
         """Add an IPA call to the batch operation"""
         self.batch_args.append({
-            "method": command,
+            "method": six.text_type(command),
             "params": [args, kw],
         })
 
