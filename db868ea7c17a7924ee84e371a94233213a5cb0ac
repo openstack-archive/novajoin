@@ -1,0 +1,8 @@
+Code-Review+2: Ade Lee <alee@redhat.com>
+Workflow+1: Juan Antonio Osorio Robles <jaosorior@redhat.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Thu, 31 Jan 2019 19:17:43 +0000
+Reviewed-on: https://review.openstack.org/628164
+Project: openstack/novajoin
+Branch: refs/heads/master
