@@ -1,0 +1,8 @@
+Code-Review+2: Juan Antonio Osorio Robles <jaosorior@redhat.com>
+Workflow+1: Juan Antonio Osorio Robles <jaosorior@redhat.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Tue, 12 Feb 2019 09:30:48 +0000
+Reviewed-on: https://review.openstack.org/635617
+Project: openstack/novajoin
+Branch: refs/heads/master
