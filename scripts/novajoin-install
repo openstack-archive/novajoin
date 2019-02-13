@@ -133,7 +133,10 @@ def install(opts):
     config.set('keystone_authtoken', 'project_name', opts.project_name)
     config.set('keystone_authtoken', 'password', opts.nova_password)
     config.set('keystone_authtoken', 'username', 'nova')
+    # auth_url left for backward compatibility
     config.set('keystone_authtoken', 'auth_url', opts.keystone_auth_url)
+    config.set('keystone_authtoken', 'www_authenticate_uri',
+               opts.keystone_auth_url)
     config.set('keystone_authtoken', 'auth_type', 'password')
     config.set('keystone_authtoken', 'project_domain_name', 'default')
     config.set('keystone_authtoken', 'user_domain_id', 'default')
