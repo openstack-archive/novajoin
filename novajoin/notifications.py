@@ -154,12 +154,6 @@ class NotificationEndpoint(object):
             LOG.info('IPA enrollment not requested, skipping update of %s',
                      hostname)
             return
-        # Ensure this instance exists in nova
-        instance = get_instance(instance_id)
-        if instance is None:
-            msg = 'No such instance-id, %s' % instance_id
-            LOG.error(msg)
-            return
 
         ipa.start_batch_operation()
         # key-per-service
