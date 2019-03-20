@@ -100,10 +100,16 @@ if __name__ == '__main__':
         if version.NUM_VERSION >= 40500:
             cafile = novajoin.create_cafile(opts.server, opts.realm)
             # Workaround for https://pagure.io/freeipa/issue/7145
-            args['tls_ca_cert'] = cafile.decode('UTF-8')
+            try:
+                args['tls_ca_cert'] = cafile.decode('UTF-8')
+            except AttributeError:
+                args['tls_ca_cert'] = cafile
         else:
             nss_db = novajoin.create_nssdb(opts.server, opts.realm)
-            args['nss_dir'] = nss_db.secdir.decode('UTF-8')
+            try:
+                args['nss_dir'] = nss_db.secdir.decode('UTF-8')
+            except AttributeError:
+                args['nss_dir'] = nss_db.secdir
 
     api.bootstrap(**args)
     api.finalize()
