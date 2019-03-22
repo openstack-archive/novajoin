@@ -1,0 +1,11 @@
+Code-Review+1: Luca Miccini <lmiccini@redhat.com>
+Code-Review+1: Martin Schuppert <mschuppert@redhat.com>
+Code-Review+2: Grzegorz Grasza <xek@redhat.com>
+Code-Review+2: Juan Antonio Osorio Robles <jaosorior@redhat.com>
+Workflow+1: Juan Antonio Osorio Robles <jaosorior@redhat.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Fri, 22 Mar 2019 12:11:49 +0000
+Reviewed-on: https://review.openstack.org/644785
+Project: openstack/novajoin
+Branch: refs/heads/master
