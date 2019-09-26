@@ -1,8 +1,0 @@
-# System distribution package dependencies
-# This is used by bindep: sudo [apt-get | yum] install $(bindep -b)
-
-python-ipalib
-python-ipaclient
-
-python3-ipalib [py3]
-python3-ipaclient [py3]
